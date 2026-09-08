@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head><meta charset="UTF-8" /><title>icon</title>
+<style>html,body{margin:0;padding:0}canvas{display:block}</style>
+</head>
+<body>
+<script>
+  var S = 512;
+  var c = document.createElement('canvas');
+  c.width = S; c.height = S;
+  document.body.appendChild(c);
+  var ctx = c.getContext('2d');
+
+  /* 宣纸底 */
+  ctx.fillStyle = '#f6f1e3';
+  ctx.fillRect(0, 0, S, S);
+  /* 纸纹噪点 */
+  var seed = 7;
+  function rnd() { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; }
+  ctx.fillStyle = 'rgba(120,100,60,0.06)';
+  for (var i = 0; i < 300; i++) ctx.fillRect(rnd() * S, rnd() * S, 1 + rnd() * 2, 1);
+
+  /* 墨圈（enso 风格，缺口朝上偏右） */
+  ctx.strokeStyle = '#33383f';
+  ctx.lineCap = 'round';
+  var cx = S / 2, cy = S / 2, R = S * 0.30;
+  ctx.beginPath();
+  var a0 = -Math.PI * 0.32, a1 = Math.PI * 1.52;
+  ctx.arc(cx, cy, R, a0, a1);
+  ctx.lineWidth = S * 0.075;
+  ctx.stroke();
+  /* 收笔墨色渐淡：补一段细一点的尾 */
+  ctx.beginPath();
+  ctx.arc(cx, cy, R, a1 - 0.5, a1);
+  ctx.lineWidth = S * 0.045;
+  ctx.strokeStyle = 'rgba(51,56,63,0.75)';
+  ctx.stroke();
+
+  /* 一轮淡月点缀缺口处 */
+  ctx.fillStyle = '#e8d9ae';
+  ctx.beginPath();
+  ctx.arc(cx + R * 0.72, cy - R * 0.78, S * 0.055, 0, Math.PI * 2);
+  ctx.fill();
+
+  /* 朱红印章：诗 */
+  var ss = S * 0.30;
+  var x = cx - ss / 2, y = cy - ss / 2, r = ss * 0.12;
+  ctx.fillStyle = 'rgba(176,58,46,0.92)';
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + ss, y, x + ss, y + ss, r);
+  ctx.arcTo(x + ss, y + ss, x, y + ss, r);
+  ctx.arcTo(x, y + ss, x, y, r);
+  ctx.arcTo(x, y, x + ss, y, r);
+  ctx.fill();
+  ctx.fillStyle = '#f6f1e3';
+  ctx.font = ss * 0.66 + 'px "KaiTi","STKaiti",serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('诗', cx, cy + ss * 0.04);
+</script>
+</body>
+</html>

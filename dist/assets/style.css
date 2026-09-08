@@ -1,0 +1,546 @@
+/* 诗画同源 · 小学必背古诗词 —— Chrome 61 基线 CSS
+ * 注意：不用 flex gap（用 margin 回退）、不用 aspect-ratio、不用逻辑属性
+ */
+
+#app {
+  min-height: 100%;
+  padding-bottom: calc(24px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
+}
+
+.wrap {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 0 16px;
+}
+
+/* ---------- 顶栏 ---------- */
+
+.topbar {
+  padding-top: calc(12px + var(--safe-area-inset-top, env(safe-area-inset-top, 0px)));
+  padding-bottom: 10px;
+  text-align: center;
+}
+.topbar .brand {
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: 4px;
+  color: #33383f;
+}
+.topbar .sub {
+  margin-top: 4px;
+  font-size: 12px;
+  color: #9a9484;
+  letter-spacing: 2px;
+}
+
+.nav {
+  display: flex;
+  justify-content: center;
+  padding: 6px 0 10px;
+}
+.nav .nav-item {
+  margin: 0 6px;
+  padding: 6px 16px;
+  font-size: 14px;
+  color: #7a7568;
+  border: 1px solid #d8d0bc;
+  border-radius: 999px;
+  background: #fbf8ef;
+  cursor: pointer;
+}
+.nav .nav-item.active {
+  color: #f6f1e3;
+  background: #33383f;
+  border-color: #33383f;
+}
+
+/* ---------- 列表页 ---------- */
+
+.search-box {
+  padding: 4px 0 10px;
+}
+.search-box input {
+  display: block;
+  width: 100%;
+  padding: 10px 14px;
+  font-size: 15px;
+  border: 1px solid #d8d0bc;
+  border-radius: 10px;
+  background: #fbf8ef;
+  outline: none;
+}
+
+.grade-chips {
+  display: flex;
+  flex-wrap: wrap;
+  padding-bottom: 10px;
+}
+.grade-chips .chip {
+  margin: 0 6px 6px 0;
+  padding: 5px 12px;
+  font-size: 13px;
+  color: #7a7568;
+  border: 1px solid #d8d0bc;
+  border-radius: 999px;
+  background: #fbf8ef;
+  cursor: pointer;
+}
+.grade-chips .chip.active {
+  color: #f6f1e3;
+  background: #6d5f4b;
+  border-color: #6d5f4b;
+}
+
+.poem-card {
+  margin-bottom: 10px;
+  padding: 14px 16px;
+  background: #fbf8ef;
+  border: 1px solid #e4dcc6;
+  border-radius: 12px;
+  cursor: pointer;
+}
+.poem-card:active { opacity: 0.7; }
+.poem-card .pc-head { display: flex; align-items: baseline; }
+.poem-card .pc-title {
+  font-size: 17px;
+  font-weight: 600;
+}
+.poem-card .pc-meta {
+  margin-left: 10px;
+  font-size: 12px;
+  color: #9a9484;
+}
+.poem-card .pc-line {
+  margin-top: 6px;
+  font-size: 14px;
+  color: #6d675a;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.poem-card .pc-foot {
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+}
+.poem-card .pc-grade {
+  font-size: 11px;
+  color: #8a7f63;
+  background: #efe8d2;
+  border-radius: 4px;
+  padding: 2px 6px;
+}
+.poem-card .pc-done {
+  margin-left: 8px;
+  font-size: 11px;
+  color: #3a7d5d;
+}
+.poem-card .pc-tags {
+  margin-left: auto;
+  font-size: 11px;
+  color: #b0a890;
+}
+
+.empty-tip {
+  padding: 60px 0;
+  text-align: center;
+  color: #9a9484;
+  font-size: 14px;
+}
+
+/* ---------- 意象页 ---------- */
+
+.img-cloud { padding: 8px 0 16px; }
+.img-chip {
+  display: inline-block;
+  margin: 0 8px 10px 0;
+  padding: 8px 14px;
+  background: #fbf8ef;
+  border: 1px solid #e4dcc6;
+  border-radius: 10px;
+  cursor: pointer;
+}
+.img-chip:active { opacity: 0.7; }
+.img-chip .ic-name { font-size: 15px; color: #33383f; }
+.img-chip .ic-count { margin-left: 6px; font-size: 12px; color: #9a9484; }
+
+/* ---------- 详情页 ---------- */
+
+.back-row {
+  padding-top: calc(10px + var(--safe-area-inset-top, env(safe-area-inset-top, 0px)));
+  padding-bottom: 8px;
+}
+.back-btn {
+  display: inline-block;
+  padding: 6px 14px;
+  font-size: 14px;
+  color: #7a7568;
+  border: 1px solid #d8d0bc;
+  border-radius: 999px;
+  background: #fbf8ef;
+  cursor: pointer;
+}
+
+.scene-box {
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid #e4dcc6;
+  background: #f2ecdb;
+}
+.scene-box canvas { display: block; width: 100%; height: auto; }
+
+.poem-head { padding: 14px 4px 4px; text-align: center; }
+.poem-head .ph-title { font-size: 24px; font-weight: 600; letter-spacing: 2px; }
+.poem-head .ph-meta { margin-top: 6px; font-size: 13px; color: #9a9484; }
+
+.toolbar {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  padding: 10px 0;
+}
+.toolbar .tool {
+  margin: 0 5px 6px;
+  padding: 6px 13px;
+  font-size: 13px;
+  color: #7a7568;
+  border: 1px solid #d8d0bc;
+  border-radius: 999px;
+  background: #fbf8ef;
+  cursor: pointer;
+}
+.toolbar .tool.on {
+  color: #f6f1e3;
+  background: #6d5f4b;
+  border-color: #6d5f4b;
+}
+
+/* ---------- 诗句区 ---------- */
+
+.verse {
+  margin: 4px 0 14px;
+  padding: 18px 12px;
+  background: #fbf8ef;
+  border: 1px solid #e4dcc6;
+  border-radius: 12px;
+}
+.line-row {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  padding: 8px 0 8px 28px;
+  cursor: pointer;
+}
+.line-row .seg-tag {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  margin-top: -14px;
+  width: 22px;
+  height: 22px;
+  line-height: 22px;
+  text-align: center;
+  font-size: 12px;
+  color: #f6f1e3;
+  background: #8a7f63;
+  border-radius: 4px;
+}
+.line-row.famous { background: rgba(214, 178, 94, 0.14); border-radius: 8px; }
+
+.ch {
+  display: inline-block;
+  text-align: center;
+  vertical-align: top;
+}
+.ch .py {
+  display: block;
+  height: 14px;
+  font-size: 10px;
+  line-height: 14px;
+  color: #9a9484;
+}
+.ch .glyph {
+  display: block;
+  font-size: 24px;
+  line-height: 34px;
+  font-family: "KaiTi", "STKaiti", serif;
+}
+.ch .tone {
+  display: block;
+  height: 12px;
+  font-size: 10px;
+  line-height: 12px;
+}
+.ch.tone-ping .tone { color: #3a7d5d; }
+.ch.tone-ze .tone { color: #b03a2e; }
+.ch.tone-neu .tone { color: #b0a890; }
+.ch .glyph.rhyme-0 { border-bottom: 3px solid #b03a2e; }
+.ch .glyph.rhyme-1 { border-bottom: 3px solid #2f6f8f; }
+.ch .glyph.rhyme-2 { border-bottom: 3px solid #8f6d2f; }
+.ch.punct .glyph { font-size: 20px; color: #9a9484; }
+
+/* 背诵遮字 */
+.ch.masked .glyph {
+  color: transparent;
+  background: #e8e0c8;
+  border-radius: 4px;
+  min-width: 30px;
+}
+.ch.masked .py { visibility: hidden; }
+.ch.masked .tone { visibility: hidden; }
+
+.legend {
+  padding: 0 4px 10px;
+  font-size: 12px;
+  color: #9a9484;
+  text-align: center;
+}
+.legend .lg-ping { color: #3a7d5d; }
+.legend .lg-ze { color: #b03a2e; }
+
+/* ---------- 注释/译文区块 ---------- */
+
+.anno-panel {
+  margin: -6px 0 12px;
+  padding: 12px 14px;
+  background: #f3edda;
+  border: 1px dashed #d8d0bc;
+  border-radius: 10px;
+}
+.anno-panel .ap-item { margin-bottom: 6px; font-size: 13px; line-height: 1.7; }
+.anno-panel .ap-word { color: #8a5a2b; font-weight: 600; }
+.anno-panel .ap-none { font-size: 13px; color: #9a9484; }
+
+.section {
+  margin-bottom: 12px;
+  background: #fbf8ef;
+  border: 1px solid #e4dcc6;
+  border-radius: 12px;
+  overflow: hidden;
+}
+.section .sec-head {
+  padding: 12px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #6d5f4b;
+  cursor: pointer;
+}
+.section .sec-head .arrow { float: right; color: #b0a890; font-weight: 400; }
+.section .sec-body {
+  display: none;
+  padding: 0 16px 14px;
+  font-size: 14px;
+  line-height: 1.9;
+  color: #4a463c;
+}
+.section.open .sec-body { display: block; }
+
+.recite-bar {
+  display: flex;
+  justify-content: center;
+  padding: 4px 0 14px;
+}
+.recite-bar .rc {
+  margin: 0 5px;
+  padding: 6px 12px;
+  font-size: 13px;
+  border-radius: 999px;
+  border: 1px solid #d8d0bc;
+  background: #fbf8ef;
+  color: #7a7568;
+  cursor: pointer;
+}
+.recite-bar .rc.on { color: #f6f1e3; background: #3a7d5d; border-color: #3a7d5d; }
+
+/* ---------- 弹层（分享/提示） ---------- */
+
+.mask {
+  position: fixed;
+  left: 0; right: 0; top: 0; bottom: 0;
+  background: rgba(30, 28, 22, 0.55);
+  z-index: 50;
+}
+.sheet {
+  position: fixed;
+  left: 0; right: 0; bottom: 0;
+  z-index: 51;
+  background: #fbf8ef;
+  border-radius: 16px 16px 0 0;
+  padding: 16px 16px calc(16px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
+}
+.sheet .sheet-title {
+  text-align: center;
+  font-size: 15px;
+  font-weight: 600;
+  padding-bottom: 12px;
+}
+.sheet .sheet-btn {
+  display: block;
+  width: 100%;
+  margin-bottom: 10px;
+  padding: 13px 0;
+  text-align: center;
+  font-size: 15px;
+  border-radius: 10px;
+  border: 1px solid #d8d0bc;
+  background: #f6f1e3;
+  color: #33383f;
+  cursor: pointer;
+}
+.sheet .sheet-btn.primary { background: #33383f; color: #f6f1e3; border-color: #33383f; }
+.sheet .sheet-preview {
+  display: block;
+  width: 60%;
+  margin: 0 auto 12px;
+  border-radius: 8px;
+  border: 1px solid #e4dcc6;
+}
+.sheet .sheet-hint {
+  text-align: center;
+  font-size: 12px;
+  color: #9a9484;
+  padding-bottom: 10px;
+}
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 90px;
+  -webkit-transform: translateX(-50%);
+  transform: translateX(-50%);
+  z-index: 60;
+  padding: 9px 18px;
+  background: rgba(51, 56, 63, 0.92);
+  color: #f6f1e3;
+  font-size: 13px;
+  border-radius: 999px;
+}
+
+/* ---------- 复习提醒 ---------- */
+
+.review-banner {
+  margin-bottom: 10px;
+  padding: 12px 16px;
+  background: #eef3e6;
+  border: 1px solid #ccd8b8;
+  border-radius: 10px;
+  font-size: 14px;
+  color: #4a6b3a;
+  cursor: pointer;
+}
+.review-banner:active { opacity: 0.7; }
+
+/* ---------- 诗人页 ---------- */
+
+.author-link { color: #6d5f4b; border-bottom: 1px dashed #b0a890; cursor: pointer; }
+
+.author-head {
+  display: flex;
+  align-items: center;
+  padding: 8px 4px 14px;
+}
+.author-seal {
+  width: 64px;
+  height: 64px;
+  line-height: 64px;
+  text-align: center;
+  font-size: 34px;
+  font-family: "KaiTi", "STKaiti", serif;
+  color: #f6f1e3;
+  background: #b03a2e;
+  border-radius: 8px;
+}
+.author-info { margin-left: 14px; }
+.author-name { font-size: 22px; font-weight: 600; }
+.author-meta { margin-top: 4px; font-size: 13px; color: #9a9484; }
+.author-poems-title {
+  padding: 6px 4px 10px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #6d5f4b;
+}
+
+/* ---------- 练习 ---------- */
+
+.practice-card { text-align: left; }
+.practice-card .pc-title { font-size: 18px; }
+
+.quiz-progress {
+  padding: 6px 4px 12px;
+  font-size: 13px;
+  color: #9a9484;
+  text-align: center;
+}
+.quiz-card {
+  padding: 22px 18px;
+  background: #fbf8ef;
+  border: 1px solid #e4dcc6;
+  border-radius: 12px;
+  text-align: center;
+}
+.qc-from { font-size: 13px; color: #9a9484; }
+.qc-prompt {
+  margin-top: 12px;
+  font-size: 26px;
+  font-family: "KaiTi", "STKaiti", serif;
+  letter-spacing: 2px;
+}
+.qc-hint { margin-top: 12px; font-size: 13px; color: #b0a890; }
+
+.quiz-options { padding: 14px 0; }
+.quiz-option {
+  margin-bottom: 10px;
+  padding: 14px 16px;
+  background: #fbf8ef;
+  border: 1px solid #d8d0bc;
+  border-radius: 10px;
+  font-size: 17px;
+  font-family: "KaiTi", "STKaiti", serif;
+  text-align: center;
+  cursor: pointer;
+}
+.quiz-option:active { opacity: 0.7; }
+.quiz-option.right { background: #eef3e6; border-color: #3a7d5d; color: #3a7d5d; }
+.quiz-option.wrong { background: #f7e8e6; border-color: #b03a2e; color: #b03a2e; }
+
+.quiz-result {
+  padding: 60px 20px;
+  text-align: center;
+}
+.qr-score {
+  font-size: 52px;
+  font-weight: 600;
+  color: #6d5f4b;
+}
+.qr-text { margin: 12px 0 26px; font-size: 15px; color: #7a7568; }
+
+/* ---------- 对仗连连看 ---------- */
+
+.dz-tip {
+  padding: 0 4px 12px;
+  font-size: 13px;
+  color: #9a9484;
+  text-align: center;
+}
+.dz-board {
+  display: flex;
+  justify-content: center;
+  padding-bottom: 20px;
+}
+.dz-col { margin: 0 18px; }
+.dz-tile {
+  width: 56px;
+  height: 56px;
+  line-height: 56px;
+  margin-bottom: 12px;
+  text-align: center;
+  font-size: 26px;
+  font-family: "KaiTi", "STKaiti", serif;
+  background: #fbf8ef;
+  border: 1px solid #d8d0bc;
+  border-radius: 10px;
+  cursor: pointer;
+}
+.dz-tile.sel { border-color: #6d5f4b; background: #efe8d2; }
+.dz-tile.ok { background: #eef3e6; border-color: #3a7d5d; color: #3a7d5d; }
+.dz-tile.bad { background: #f7e8e6; border-color: #b03a2e; }
