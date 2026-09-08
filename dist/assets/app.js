@@ -37,6 +37,13 @@
       try {
         this.data = JSON.parse(localStorage.getItem(LS_KEY)) || {};
       } catch (e) { this.data = {}; }
+      /* 旧版只有诗句接龙有成绩，迁移到统一的 best.* 记录 */
+      if (this.data._quizBest && this.data._quizBest.score !== undefined) {
+        var old = this.data._quizBest.score;
+        if (!this.data['best.quiz'] || old > this.data['best.quiz'].n) {
+          this.data['best.quiz'] = { n: old };
+        }
+      }
     },
     save: function () {
       try { localStorage.setItem(LS_KEY, JSON.stringify(this.data)); } catch (e) {}
@@ -78,6 +85,32 @@
     return n;
   }
 
+  /* 无障碍：让 span/div 扮演按钮时可聚焦、可键盘触发（Chrome 61 基线能力） */
+  function btnify(node, label) {
+    node.setAttribute('role', 'button');
+    node.tabIndex = 0;
+    if (label !== undefined) node.setAttribute('aria-label', label);
+    node.addEventListener('keydown', function (ev) {
+      if (ev.key === 'Enter' || ev.key === ' ') {
+        ev.preventDefault();
+        node.click();
+      }
+    });
+    return node;
+  }
+
+  /* 滚动记忆：进入子视图前记住来源视图的滚动位置，返回时恢复 */
+  function saveScroll(view) {
+    state.scrollMem[view] = window.pageYOffset || document.documentElement.scrollTop || 0;
+  }
+  function restoreScroll(view) {
+    var y = state.scrollMem[view];
+    delete state.scrollMem[view];
+    if (y) {
+      requestAnimationFrame(function () { window.scrollTo(0, y); });
+    }
+  }
+
   function toast(msg) {
     var t = el('div', 'toast', msg);
     document.body.appendChild(t);
@@ -113,7 +146,12 @@
   }
 
   function bridgeSave(dataUrl, done) {
-    bridge().saveImageToPhotosAlbum({ filePath: dataUrl }).then(function () {
+    var b = bridge();
+    if (!b || typeof b.saveImageToPhotosAlbum !== 'function') {
+      toast('当前环境不支持保存相册');
+      return;
+    }
+    b.saveImageToPhotosAlbum({ filePath: dataUrl }).then(function () {
       toast('已保存到相册');
       done && done();
     }).catch(function (err) {
@@ -122,7 +160,12 @@
   }
 
   function bridgePost(dataUrl, poem, done) {
-    bridge().postNote({
+    var b = bridge();
+    if (!b || typeof b.postNote !== 'function') {
+      toast('当前环境不支持发笔记');
+      return;
+    }
+    b.postNote({
       title: poem ? poem.t : '我的诗词打卡',
       content: poem ? '【' + poem.d + '】' + poem.a + '\n' + poem.l.join('')
         : '我用「诗画同源」学古诗啦',
@@ -180,29 +223,79 @@
     document.body.appendChild(sheet);
   }
 
+  /* 当前 hash 顶层路由（#/quiz -> quiz），供异步回调用做「视图守卫」 */
+  function inView(name) {
+    var h = location.hash.replace(/^#\/?/, '');
+    return h.split('/')[0] === name || (name === 'list' && h === '');
+  }
+
+  /* 通用动作面板：一组 { label, hint, run } 选项，点选后执行 */
+  function openCardHub(title, options) {
+    var mask = el('div', 'mask');
+    var sheet = el('div', 'sheet');
+    sheet.appendChild(el('div', 'sheet-title', title));
+
+    function close() {
+      mask.parentNode && mask.parentNode.removeChild(mask);
+      sheet.parentNode && sheet.parentNode.removeChild(sheet);
+    }
+    mask.addEventListener('click', close);
+
+    options.forEach(function (opt) {
+      var row = el('div', 'hub-row');
+      var label = el('div', 'hub-label', opt.label);
+      row.appendChild(label);
+      if (opt.hint) row.appendChild(el('div', 'hub-hint', opt.hint));
+      row.addEventListener('click', function () {
+        close();
+        if (opt.run) opt.run();
+      });
+      btnify(row, opt.label);
+      sheet.appendChild(row);
+    });
+
+    var btnCancel = el('button', 'sheet-btn', '取消');
+    btnCancel.addEventListener('click', close);
+    sheet.appendChild(btnCancel);
+
+    document.body.appendChild(mask);
+    document.body.appendChild(sheet);
+  }
+
   /* ---------- 路由 ---------- */
 
   var app = document.getElementById('app');
+  /* 一级导航（单一数据源：navBar / journey 等页共用） */
+  var TABS = [['list', '诗集'], ['img', '意象'], ['authors', '诗人'],
+    ['journey', '诗径'], ['practice', '练习']];
+  /* 各视图的返回目标由各调用点显式传入 backBtn(text, fallback) */
   var state = {
     grade: 0,
     query: '',
-    imgFilter: null,
     reviewOnly: false,
     showPy: true,
     showTone: true,
-    recite: 0,
+    recite: 0,      /* 隐藏强度：0 关 / 1 首字提示 / 2 半隐 / 3 全隐挑战 */
+    pair: 0,        /* 亲子对背：0 关 / 4 我背出句 / 5 我背对句（与 recite 正交） */
     revealed: {},
-    openLine: -1
+    openLine: -1,
+    view: 'list',   /* 当前顶层视图（list/img/authors/journey/practice） */
+    scrollMem: {}   /* 各列表视图离开时的滚动位置（返回时恢复） */
   };
 
   function route() {
     var hash = location.hash.replace(/^#\/?/, '');
     var parts = hash.split('/');
     var v = parts[0];
+    var prevView = state.view;
+    /* 畸形/截断的 % 编码不抛 URIError，回退原串走正常列表页 */
+    function dec(s) {
+      try { return decodeURIComponent(s); } catch (e) { return s; }
+    }
     if (v === 'poem' && parts[1]) renderDetail(parts[1]);
-    else if (v === 'img') renderImagery();
+    else if (v === 'img') renderImagery(parts[1] ? dec(parts[1]) : null);
     else if (v === 'authors') renderAuthors();
-    else if (v === 'author' && parts[1]) renderAuthor(decodeURIComponent(parts[1]));
+    else if (v === 'author' && parts[1]) renderAuthor(dec(parts[1]));
     else if (v === 'practice') renderPractice();
     else if (v === 'quiz') renderQuiz();
     else if (v === 'duizhang') renderDuizhang();
@@ -212,26 +305,42 @@
     else if (v === 'duizi') renderDuizi();
     else if (v === 'feihua') renderFeihua();
     else if (v === 'journey') renderJourney();
-    else {
-      state.imgFilter = v === 'list' && parts[1] ? decodeURIComponent(parts[1]) : null;
+    else if (v === 'list' && parts[1]) {
+      /* 旧入口 #/list/<意象>：先解码一次再重新编码，避免二次编码 */
+      var legacyKey = dec(parts[1]);
+      location.hash = '#/img/' + encodeURIComponent(legacyKey);
+    } else {
+      /* 筛选是「诗集」tab 的会话状态：同 tab 内进出详情保留；
+         从其它一级 tab 切回时清空，避免带着旧筛选一头雾水 */
+      if (prevView !== 'list') {
+        state.grade = 0;
+        state.query = '';
+        state.reviewOnly = false;
+      }
+      state.view = 'list';
       renderList();
     }
   }
 
   function navBar(active) {
     var nav = el('div', 'nav');
-    [['list', '诗集'], ['img', '意象'], ['authors', '诗人'], ['journey', '诗径'], ['practice', '练习']]
-      .forEach(function (it) {
-        var n = el('span', 'nav-item' + (active === it[0] ? ' active' : ''), it[1]);
-        n.addEventListener('click', function () { location.hash = '#/' + it[0]; });
-        nav.appendChild(n);
-      });
+    TABS.forEach(function (it) {
+      var n = el('span', 'nav-item' + (active === it[0] ? ' active' : ''), it[1]);
+      n.addEventListener('click', function () { location.hash = '#/' + it[0]; });
+      btnify(n);
+      nav.appendChild(n);
+    });
     return nav;
   }
 
-  function backBtn(text) {
+  /* 统一返回：优先浏览器历史；无历史（深链直达）时落到页面兜底目标 */
+  function backBtn(text, fallback) {
     var back = el('span', 'back-btn', text || '← 返回');
-    back.addEventListener('click', function () { history.back(); });
+    back.addEventListener('click', function () {
+      if (window.history.length > 1) window.history.back();
+      else location.hash = fallback || '#/list';
+    });
+    btnify(back);
     var row = el('div', 'back-row');
     row.appendChild(back);
     return row;
@@ -299,9 +408,18 @@
     if (p.tg.length) foot.appendChild(el('span', 'pc-tags', p.tg.slice(0, 2).join(' · ')));
     card.appendChild(foot);
     card.addEventListener('click', function () {
+      saveScroll(navKey());
       location.hash = '#/poem/' + p.id;
     });
+    btnify(card, p.t);
     return card;
+  }
+
+  /* 当前列表视图的滚动记忆键（与 location.hash 一致，便于返回时精确恢复） */
+  function navKey() {
+    var h = location.hash;
+    if (!h || h === '#/' || h === '#/list') return 'list';
+    return h.replace(/^#\//, '');
   }
 
   function filterPoems() {
@@ -309,7 +427,6 @@
     var due = state.reviewOnly ? duePoems() : null;
     return POEMS.filter(function (p) {
       if (due && due.indexOf(p) < 0) return false;
-      if (state.imgFilter && p.img.indexOf(state.imgFilter) < 0) return false;
       if (state.grade && p.g !== state.grade) return false;
       if (q) {
         var hay = p.t + p.a + p.d + p.l.join('') + p.tg.join('');
@@ -319,69 +436,71 @@
     });
   }
 
-  function renderList() {
-    app.innerHTML = '';
-    var wrap = el('div', 'wrap');
-
+  /* 列表页头部：标题区 + 卡片工坊 + 常驻复习入口 */
+  function listHeader(wrap, activeNav) {
     var bar = el('div', 'topbar');
     bar.appendChild(el('div', 'brand', '诗画同源'));
     bar.appendChild(el('div', 'sub', '小学必背古诗词 · 一诗一画'));
-    /* 每日一诗日签入口（逢节气优先推节气诗） */
-    var today = new Date();
-    var daySign = el('span', 'nav-item', '今日日签');
-    daySign.addEventListener('click', function () {
-      var pick = poemOfDay(today);
-      showCardSheet(pick.subtitle + ' · ' + pick.poem.t,
-        window.PoemCards.composeDateCard(pick.poem, today, pick.subtitle), pick.poem);
-    });
-    bar.appendChild(daySign);
-    /* 本周战报入口 */
-    var weekBtn = el('span', 'nav-item', '本周战报');
-    weekBtn.addEventListener('click', function () {
-      showCardSheet('本周背诗战报', window.PoemCards.composeWeeklyCard(weeklyStats()), null);
-    });
-    bar.appendChild(weekBtn);
     wrap.appendChild(bar);
-    wrap.appendChild(navBar('list'));
+    wrap.appendChild(navBar(activeNav));
+    return bar;
+  }
 
-    /* 复习提醒 */
-    var due = duePoems();
-    if (due.length && !state.reviewOnly) {
-      var banner = el('div', 'review-banner',
-        '有 ' + due.length + ' 首到了复习时间，点我开始复习 →');
-      banner.addEventListener('click', function () {
-        state.reviewOnly = true;
-        renderList();
-      });
-      wrap.appendChild(banner);
-    }
+  function renderList() {
+    app.innerHTML = '';
+    window.scrollTo(0, 0);
+    var wrap = el('div', 'wrap');
+    listHeader(wrap, 'list');
+    /* 复习队列为空时自动退出复习模式，避免空列表 */
+    if (state.reviewOnly && !duePoems().length) state.reviewOnly = false;
+
+    /* 卡片入口收进搜索行，避免在首页形成孤立的一整行操作 */
+    var cardBtn = el('span', 'card-inline', '卡片');
+    cardBtn.addEventListener('click', function () {
+      var today = new Date();
+      openCardHub('卡片工坊', [
+        { label: '今日日签', hint: '按节气/每日一诗挑一首', run: function () {
+          var pick = poemOfDay(today);
+          showCardSheet(pick.subtitle + ' · ' + pick.poem.t,
+            window.PoemCards.composeDateCard(pick.poem, today, pick.subtitle), pick.poem);
+        } },
+        { label: '本周战报', hint: '本周背诵小结 · 可存相册/发笔记', run: function () {
+          showCardSheet('本周背诗战报', window.PoemCards.composeWeeklyCard(weeklyStats()), null);
+        } }
+      ]);
+    });
+    btnify(cardBtn);
 
     var searchBox = el('div', 'search-box');
     var input = el('input');
     input.type = 'search';
     input.placeholder = '搜索诗名 / 作者 / 诗句';
     input.value = state.query;
+    var searchTimer = null;
     input.addEventListener('input', function () {
       state.query = input.value;
-      refreshCards(listHost);
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(function () { refreshCards(listHost); }, 150);
     });
     searchBox.appendChild(input);
+    searchBox.appendChild(cardBtn);
     wrap.appendChild(searchBox);
 
     var chips = el('div', 'grade-chips');
-    if (state.reviewOnly) {
-      var rc = el('span', 'chip active', '复习模式 ✕');
-      rc.addEventListener('click', function () {
-        state.reviewOnly = false;
+
+    /* 常驻「待复习」入口：有到期即显示数量，可一键进入/退出复习队列 */
+    var due = duePoems();
+    if (state.reviewOnly || due.length) {
+      var rvText = state.reviewOnly
+        ? (due.length ? '待复习 ' + due.length + ' 首 ✕' : '全部复习完 ✕')
+        : '待复习 ' + due.length + ' 首';
+      var rv = el('span', 'chip' + (state.reviewOnly ? ' active' : ''), rvText);
+      rv.addEventListener('click', function () {
+        state.reviewOnly = !state.reviewOnly;
         renderList();
       });
-      chips.appendChild(rc);
-    }
-    if (state.imgFilter) {
-      var tag = el('span', 'chip active',
-        '意象：' + (IMG_NAME[state.imgFilter] || state.imgFilter) + ' ✕');
-      tag.addEventListener('click', function () { location.hash = '#/list'; });
-      chips.appendChild(tag);
+      btnify(rv);
+      chips.appendChild(rv);
     }
     var grades = [['全部', 0], ['一', 1], ['二', 2], ['三', 3], ['四', 4], ['五', 5], ['六', 6]];
     grades.forEach(function (gv) {
@@ -391,6 +510,7 @@
         state.grade = gv[1];
         renderList();
       });
+      btnify(c);
       chips.appendChild(c);
     });
     wrap.appendChild(chips);
@@ -399,6 +519,7 @@
     wrap.appendChild(listHost);
     app.appendChild(wrap);
     refreshCards(listHost);
+    restoreScroll('list');
   }
 
   function refreshCards(host) {
@@ -413,39 +534,66 @@
 
   /* ---------- 意象页 ---------- */
 
-  function renderImagery() {
+  /* 意象页：长廊 chips + 页内过滤诗单（#/img/<key>），不再跳到诗集 tab */
+  function renderImagery(filterKey) {
     app.innerHTML = '';
+    window.scrollTo(0, 0);
     var wrap = el('div', 'wrap');
     var bar = el('div', 'topbar');
     bar.appendChild(el('div', 'brand', '意象长廊'));
-    bar.appendChild(el('div', 'sub', '同一个意象，藏在哪些诗里？'));
+    bar.appendChild(el('div', 'sub', '点一个意象，看它藏在哪些诗里'));
     wrap.appendChild(bar);
     wrap.appendChild(navBar('img'));
+    state.view = 'img';
 
     var cloud = el('div', 'img-cloud');
     IMG_INDEX.forEach(function (it) {
-      var chip = el('span', 'img-chip');
+      var active = filterKey === it.k;
+      var chip = el('span', 'img-chip' + (active ? ' active' : ''));
       chip.appendChild(el('span', 'ic-name', IMG_NAME[it.k] || it.k));
       chip.appendChild(el('span', 'ic-count', it.n + ' 首'));
       chip.addEventListener('click', function () {
-        location.hash = '#/list/' + encodeURIComponent(it.k);
+        if (active) location.hash = '#/img';
+        else location.hash = '#/img/' + encodeURIComponent(it.k);
       });
+      btnify(chip, (IMG_NAME[it.k] || it.k) + ' 意象');
       cloud.appendChild(chip);
     });
     wrap.appendChild(cloud);
-    app.appendChild(wrap);
+
+    if (filterKey) {
+      var list = POEMS.filter(function (p) { return p.img.indexOf(filterKey) >= 0; });
+      var hint = el('div', 'img-filter-head');
+      var clear = el('span', 'chip', '✕ 收起诗单');
+      clear.addEventListener('click', function () { location.hash = '#/img'; });
+      btnify(clear);
+      hint.appendChild(el('span', 'img-filter-name',
+        '「' + (IMG_NAME[filterKey] || filterKey) + '」 · ' + list.length + ' 首'));
+      hint.appendChild(clear);
+      wrap.appendChild(hint);
+      var listHost = el('div');
+      wrap.appendChild(listHost);
+      app.appendChild(wrap);
+      if (list.length) list.forEach(function (p) { listHost.appendChild(poemCard(p)); });
+      else listHost.appendChild(el('div', 'empty-tip', '暂无诗词'));
+    } else {
+      app.appendChild(wrap);
+    }
+    restoreScroll(navKey());
   }
 
   /* ---------- 诗人页 ---------- */
 
   function renderAuthors() {
     app.innerHTML = '';
+    window.scrollTo(0, 0);
     var wrap = el('div', 'wrap');
     var bar = el('div', 'topbar');
     bar.appendChild(el('div', 'brand', '诗人名录'));
     bar.appendChild(el('div', 'sub', '认识写诗的人'));
     wrap.appendChild(bar);
     wrap.appendChild(navBar('authors'));
+    state.view = 'authors';
 
     AUTHORS.forEach(function (a) {
       var row = el('div', 'poem-card');
@@ -461,11 +609,14 @@
       foot.appendChild(el('span', 'pc-grade', '入选 ' + a.ids.length + ' 首'));
       row.appendChild(foot);
       row.addEventListener('click', function () {
+        saveScroll(navKey());
         location.hash = '#/author/' + encodeURIComponent(a.n);
       });
+      btnify(row, '诗人 ' + a.n);
       wrap.appendChild(row);
     });
     app.appendChild(wrap);
+    restoreScroll('authors');
   }
 
   function renderAuthor(name) {
@@ -476,8 +627,9 @@
     if (!author) { location.hash = '#/authors'; return; }
 
     app.innerHTML = '';
+    window.scrollTo(0, 0);
     var wrap = el('div', 'wrap');
-    wrap.appendChild(backBtn());
+    wrap.appendChild(backBtn('← 返回', '#/authors'));
 
     var head = el('div', 'author-head');
     var sealBox = el('div', 'author-seal', author.n.charAt(0));
@@ -499,42 +651,67 @@
       if (p) wrap.appendChild(poemCard(p));
     });
     app.appendChild(wrap);
+    restoreScroll('author/' + encodeURIComponent(name));
   }
 
-  /* ---------- 练习中心 ---------- */
+  /* 练习中心 */
+  var GAME_META = {
+    quiz: ['诗句接龙', '给上句，接下句 · 10 题一组', '#/quiz', '分数', 10],
+    guess: ['意象猜诗', '只看画，猜是哪首诗', '#/guess', '分数', 5],
+    buhua: ['补画', '画里少了什么？补上正确的意象', '#/buhua', '分数', 5],
+    puzzle: ['诗序拼图', '诗句被打乱了，点两张卡片交换位置复原', '#/puzzle', '', 0],
+    duizhang: ['对仗连连看', '律诗对仗字配对 · 感受格律之美', '#/duizhang', '对', 0],
+    duizi: ['平仄对对子', '按平仄提示，填出对句的字', '#/duizi', '分数', 5],
+    feihua: ['飞花令', '人机对令：轮流说出含令字的诗句', '#/feihua', '轮', 0]
+  };
+
+  /* 各游戏最佳成绩：best.<key> = { n: 最佳值 }，展示在练习中心入口上 */
+  function bestGet(key) {
+    return store.get('best.' + key).n || 0;
+  }
+  function bestSet(key, n) {
+    var cur = store.get('best.' + key).n || 0;
+    if (n > cur) {
+      store.data['best.' + key] = { n: n };
+      store.save();
+    }
+  }
 
   function renderPractice() {
     app.innerHTML = '';
+    window.scrollTo(0, 0);
     var wrap = el('div', 'wrap');
     var bar = el('div', 'topbar');
     bar.appendChild(el('div', 'brand', '练习'));
-    bar.appendChild(el('div', 'sub', '背完来测一测'));
+    bar.appendChild(el('div', 'sub', '背完来测一测 · 记录你的最好成绩'));
     wrap.appendChild(bar);
     wrap.appendChild(navBar('practice'));
+    state.view = 'practice';
 
-    var entries = [
-      ['#/quiz', '诗句接龙', '给上句，接下句 · 10 题一组'],
-      ['#/guess', '意象猜诗', '只看画，猜是哪首诗'],
-      ['#/buhua', '补画', '画里少了什么？补上正确的意象'],
-      ['#/puzzle', '诗序拼图', '诗句被打乱了，点两张卡片交换位置复原'],
-      ['#/duizhang', '对仗连连看', '律诗对仗字配对 · 感受格律之美'],
-      ['#/duizi', '平仄对对子', '按平仄提示，填出对句的字'],
-      ['#/feihua', '飞花令', '人机对令：轮流说出含令字的诗句']
-    ];
-    entries.forEach(function (en) {
+    Object.keys(GAME_META).forEach(function (key) {
+      var m = GAME_META[key];
       var card = el('div', 'poem-card practice-card');
-      card.appendChild(el('div', 'pc-title', en[1]));
-      card.appendChild(el('div', 'pc-line', en[2]));
-      card.addEventListener('click', function () { location.hash = en[0]; });
+      var head = el('div', 'practice-head');
+      head.appendChild(el('div', 'pc-title', m[0]));
+      head.appendChild(el('span', 'practice-arrow', '开始 ›'));
+      card.appendChild(head);
+      var bestN = bestGet(key);
+      card.appendChild(el('div', 'pc-line', m[1]));
+      var foot = el('div', 'pc-foot practice-foot');
+      foot.appendChild(el('span', 'pc-grade', bestN > 0
+        ? (m[4] ? '最佳 ' + bestN + ' / ' + m[4] : '最佳 ' + bestN + ' ' + m[3])
+        : '尚未挑战'));
+      card.appendChild(foot);
+      card.addEventListener('click', function () {
+        saveScroll(navKey());
+        location.hash = m[2];
+      });
+      btnify(card, m[0]);
       wrap.appendChild(card);
     });
 
-    var best = store.get('_quizBest');
-    if (best.score !== undefined) {
-      wrap.appendChild(el('div', 'empty-tip',
-        '诗句接龙最佳成绩：' + best.score + ' / 10'));
-    }
     app.appendChild(wrap);
+    restoreScroll(navKey());
   }
 
   /* ---------- 诗句接龙（上句接下句） ---------- */
@@ -579,9 +756,12 @@
     var idx = 0, score = 0;
 
     function draw() {
+      if (!inView('quiz')) return;
       app.innerHTML = '';
+      window.scrollTo(0, 0);
+    window.scrollTo(0, 0);
       var wrap = el('div', 'wrap');
-      wrap.appendChild(backBtn('← 退出'));
+      wrap.appendChild(backBtn('← 退出', '#/practice'));
 
       if (idx >= qs.length) {
         /* 结算 */
@@ -590,10 +770,9 @@
         done.appendChild(el('div', 'qr-text',
           score >= 8 ? '太厉害了，诗词小达人！' :
           score >= 5 ? '不错，继续加油！' : '多读几遍，再来挑战！'));
-        var best = store.get('_quizBest');
-        if (best.score === undefined || score > best.score) {
-          store.data._quizBest = { score: score };
-          store.save();
+        var hadBest = bestGet('quiz');
+        if (score > hadBest) {
+          bestSet('quiz', score);
           done.appendChild(el('div', 'qr-text', '新纪录！'));
         }
         var again = el('button', 'sheet-btn primary', '再来一组');
@@ -633,6 +812,7 @@
           if (!right) b.className += ' wrong';
           setTimeout(function () { idx++; draw(); }, 900);
         });
+        btnify(b, opt);
         optHost.appendChild(b);
       });
       wrap.appendChild(optHost);
@@ -657,11 +837,15 @@
     var sel = null; /* 左侧选中 */
 
     function draw() {
+      if (!inView('duizhang')) return;
       app.innerHTML = '';
+      window.scrollTo(0, 0);
+    window.scrollTo(0, 0);
       var wrap = el('div', 'wrap');
-      wrap.appendChild(backBtn('← 退出'));
+      wrap.appendChild(backBtn('← 退出', '#/practice'));
 
       if (round >= ROUNDS) {
+        bestSet('duizhang', totalMatched);
         var done = el('div', 'quiz-result');
         done.appendChild(el('div', 'qr-score', totalMatched + ' 对'));
         done.appendChild(el('div', 'qr-text', '对仗感受如何？再来一组巩固一下'));
@@ -722,6 +906,7 @@
           t.className = 'dz-tile sel';
           sel = { pos: ca.pos, node: t };
         });
+        btnify(t, ca.ch + ' 出句字');
         colA.appendChild(t);
       });
       charsB.forEach(function (cb) {
@@ -741,6 +926,7 @@
             setTimeout(function () { t.className = 'dz-tile'; }, 400);
           }
         });
+        btnify(t, cb.ch + ' 对句字');
         colB.appendChild(t);
       });
 
@@ -759,12 +945,14 @@
     if (!p) { location.hash = '#/list'; return; }
     store.mark(id, 'read');
     state.recite = 0;
+    state.pair = 0;
     state.revealed = {};
     state.openLine = -1;
 
     app.innerHTML = '';
+    window.scrollTo(0, 0);
     var wrap = el('div', 'wrap');
-    wrap.appendChild(backBtn());
+    wrap.appendChild(backBtn('← 返回', '#/list'));
 
     /* 诗意图 */
     var sceneBox = el('div', 'scene-box');
@@ -781,21 +969,19 @@
     authorLink.addEventListener('click', function () {
       location.hash = '#/author/' + encodeURIComponent(p.a);
     });
+    btnify(authorLink, '查看诗人 ' + p.a);
     meta.appendChild(authorLink);
     meta.appendChild(document.createTextNode('　' + p.g + '年级' + (p.s || '') + '册'));
     head.appendChild(meta);
     wrap.appendChild(head);
 
-    /* 工具条 */
+    /* 工具条：视图开关 + 玩法 + 统一「卡片工坊」（诗画卡/字帖/日签/合照卡收进二级面板） */
     var bar = el('div', 'toolbar');
     var btnPy = el('span', 'tool' + (state.showPy ? ' on' : ''), '拼音');
     var btnTone = el('span', 'tool' + (state.showTone ? ' on' : ''), '平仄');
     var btnFog = el('span', 'tool', '拂雾看画');
     var btnWrite = el('span', 'tool', '画笔写诗');
-    var btnCard = el('span', 'tool', '诗画卡');
-    var btnCopy = el('span', 'tool', '字帖');
-    var btnSign = el('span', 'tool', '日签');
-    var btnPhoto = el('span', 'tool', '合照卡');
+    var btnCards = el('span', 'tool', '卡片工坊');
     var photoInput = document.createElement('input');
     photoInput.type = 'file';
     photoInput.accept = 'image/*';
@@ -809,12 +995,12 @@
         img.onload = function () {
           showCardSheet('诗画合照 · ' + p.t, window.PoemCards.composePhotoCard(p, img, new Date()), p);
         };
+        img.onerror = function () { toast('请选择图片文件'); };
         img.src = reader.result;
       };
       reader.readAsDataURL(file);
       photoInput.value = '';
     });
-    btnPhoto.addEventListener('click', function () { photoInput.click(); });
     btnPy.addEventListener('click', function () {
       state.showPy = !state.showPy;
       btnPy.className = 'tool' + (state.showPy ? ' on' : '');
@@ -831,53 +1017,81 @@
     btnWrite.addEventListener('click', function () {
       brushWrite(p, verseHost);
     });
-    btnCard.addEventListener('click', function () {
-      showCardSheet('诗画卡 · ' + p.t, window.PoemScene.composeCard(p), p);
+    btnCards.addEventListener('click', function () {
+      openCardHub('做一张卡片', [
+        { label: '诗画卡', hint: '这首诗的水墨画 + 诗文', run: function () {
+          showCardSheet('诗画卡 · ' + p.t, window.PoemScene.composeCard(p), p);
+        } },
+        { label: '描红字帖', hint: '田字格描红 · 每行首字为示范', run: function () {
+          showCardSheet('描红字帖 · ' + p.t, window.PoemCards.composeCopybook(p), null);
+        } },
+        { label: '今日日签', hint: '把这首诗做成每日一诗日签', run: function () {
+          var term = nearTerm(new Date());
+          var sub = term ? '今日' + term[0] : '每日一诗';
+          showCardSheet(sub + ' · ' + p.t,
+            window.PoemCards.composeDateCard(p, new Date(), sub), p);
+        } },
+        { label: '合照卡', hint: '选一张孩子照片与本诗同框', run: function () { photoInput.click(); } }
+      ]);
     });
-    btnCopy.addEventListener('click', function () {
-      showCardSheet('描红字帖 · ' + p.t, window.PoemCards.composeCopybook(p), null);
-    });
-    btnSign.addEventListener('click', function () {
-      var term = nearTerm(new Date());
-      var sub = term ? '今日' + term[0] : '每日一诗';
-      showCardSheet(sub + ' · ' + p.t,
-        window.PoemCards.composeDateCard(p, new Date(), sub), p);
-    });
+    btnify(btnPy); btnify(btnTone); btnify(btnFog); btnify(btnWrite); btnify(btnCards);
     bar.appendChild(btnPy);
     bar.appendChild(btnTone);
     bar.appendChild(btnFog);
     bar.appendChild(btnWrite);
-    bar.appendChild(btnCard);
-    bar.appendChild(btnSign);
-    bar.appendChild(btnPhoto);
-    bar.appendChild(btnCopy);
+    bar.appendChild(btnCards);
     wrap.appendChild(bar);
     wrap.appendChild(photoInput);
 
-    /* 背诵档位（4/5 为亲子对背：我背出句/我背对句） */
+    /* 背诵：隐藏强度（0–3，整行按强度藏字）与亲子对背（0/4/5，按奇偶行分角色）正交 */
     var rcBar = el('div', 'recite-bar');
-    [['关闭', 0], ['首字提示', 1], ['半隐', 2], ['全隐挑战', 3],
-     ['我背出句', 4], ['我背对句', 5]].forEach(function (it) {
-      var b = el('span', 'rc' + (state.recite === it[1] ? ' on' : ''), it[0]);
+    var maskGroup = el('div', 'recite-group');
+    maskGroup.appendChild(el('div', 'rc-label', '背诵强度'));
+    var maskOptions = el('div', 'recite-options');
+    maskGroup.appendChild(maskOptions);
+    [['无', 0], ['首字', 1], ['半隐', 2], ['全隐', 3]].forEach(function (it) {
+      var b = el('span', 'rc', it[0]);
+      b.setAttribute('data-group', 'mask');
+      b.setAttribute('data-value', it[1]);
       b.addEventListener('click', function () {
         state.recite = it[1];
         state.revealed = {};
-        var btns = rcBar.querySelectorAll('.rc');
-        for (var i = 0; i < btns.length; i++) btns[i].className = 'rc';
-        b.className = 'rc on';
+        paintReciteBar(rcBar);
         refreshVerse(verseHost, p);
         if (it[1] === 3) toast('点击被遮住的字可以偷看哦');
       });
-      rcBar.appendChild(b);
+      btnify(b, '背诵强度 ' + it[0]);
+      maskOptions.appendChild(b);
     });
-    var rcDone = el('span', 'rc', '我会背了');
+    rcBar.appendChild(maskGroup);
+    var pairGroup = el('div', 'recite-group');
+    pairGroup.appendChild(el('div', 'rc-label', '亲子对背'));
+    var pairOptions = el('div', 'recite-options');
+    pairGroup.appendChild(pairOptions);
+    [['关', 0], ['我背出句', 4], ['我背对句', 5]].forEach(function (it) {
+      var b = el('span', 'rc', it[0]);
+      b.setAttribute('data-group', 'pair');
+      b.setAttribute('data-value', it[1]);
+      b.addEventListener('click', function () {
+        state.pair = it[1];
+        state.revealed = {};
+        paintReciteBar(rcBar);
+        refreshVerse(verseHost, p);
+      });
+      btnify(b, '亲子对背 ' + it[0]);
+      pairOptions.appendChild(b);
+    });
+    rcBar.appendChild(pairGroup);
+    var rcDone = el('span', 'rc rc-done', '我会背了');
     rcDone.addEventListener('click', function () {
       store.recite(p.id);
       toast('太棒了！已标记为「已背诵」');
       checkAward();
     });
+    btnify(rcDone);
     rcBar.appendChild(rcDone);
     wrap.appendChild(rcBar);
+    paintReciteBar(rcBar);
 
     /* 诗句 */
     var verseHost = el('div');
@@ -886,7 +1100,7 @@
 
     wrap.appendChild(el('div', 'legend'))
       .innerHTML = '<span class="lg-ping">○ 平声</span>　<span class="lg-ze">● 仄声</span>' +
-      '　<span style="color:#b03a2e">—</span> 押韵字（按普通话声调标注）';
+      '　<span style="color:#b03a2e">-</span> 押韵字（按普通话声调标注）';
 
     /* 译文 / 注释 / 赏析 / 背景 */
     wrap.appendChild(section('白话译文', p.tr, true));
@@ -902,12 +1116,16 @@
     /* 画布渲染：先离屏画好，再画卷展开动画 */
     var dpr = Math.min(window.devicePixelRatio || 1, 2);
     var cssW = sceneBox.clientWidth || 320;
+    /* 首屏优先留给诗文，画面采用更适合移动端阅读的近方形比例 */
+    var cssH = Math.round(cssW * 1.05);
     canvas.width = Math.round(cssW * dpr);
-    canvas.height = Math.round(cssW * 4 / 3 * dpr);
+    canvas.height = Math.round(cssH * dpr);
     var off = document.createElement('canvas');
     off.width = canvas.width;
     off.height = canvas.height;
     window.PoemScene.render(off, p, {});
+    /* scene.render 把点画热点挂到传入的离屏画布上，需拷贝到可见画布 */
+    canvas._hotspots = off._hotspots || [];
     var ctx = canvas.getContext('2d');
     if (document.hidden || !window.requestAnimationFrame) {
       ctx.drawImage(off, 0, 0);
@@ -1099,6 +1317,7 @@
       sec.className = opened ? 'section' : 'section open';
       head.querySelector('.arrow').textContent = opened ? '▼' : '▲';
     });
+    btnify(head, title);
     sec.appendChild(head);
     sec.appendChild(body);
     return sec;
@@ -1125,16 +1344,29 @@
     return map;
   }
 
+  /* 背诵档位条：按 data-group / data-value 重绘 on 状态（不重建 DOM） */
+  function paintReciteBar(bar) {
+    var btns = bar.querySelectorAll('.rc[data-group]');
+    for (var i = 0; i < btns.length; i++) {
+      var g = btns[i].getAttribute('data-group');
+      var v = parseInt(btns[i].getAttribute('data-value'), 10);
+      var on = g === 'pair' ? state.pair === v : state.recite === v;
+      btns[i].className = 'rc' + (on ? ' on' : '');
+    }
+  }
+
   function refreshVerse(host, p) {
     host.innerHTML = '';
     var verse = el('div', 'verse');
     var bounds = segBoundary(p);
+    var intensity = state.recite; /* 0–3：整行隐藏强度 */
+    var pairMode = state.pair;    /* 0 / 4(我背出句) / 5(我背对句)：按奇偶行分角色 */
 
     p.l.forEach(function (line, li) {
       var row = el('div', 'line-row' + (isFamous(p, line) ? ' famous' : ''));
       if (bounds[li]) row.appendChild(el('span', 'seg-tag', bounds[li]));
-      if (state.recite >= 4) {
-        var mine = (state.recite === 4) === (li % 2 === 0);
+      if (pairMode > 0) {
+        var mine = (pairMode === 4) === (li % 2 === 0);
         row.appendChild(el('span', 'role-tag' + (mine ? ' me' : ''),
           mine ? '我背' : '提示'));
       }
@@ -1145,6 +1377,9 @@
       var chars = line.split('');
       var lastHanzi = chars.length - 1;
       while (lastHanzi >= 0 && !HANZI.test(chars[lastHanzi])) lastHanzi--;
+
+      /* 本行是否整行隐藏（亲子对背：孩子背的那一联藏字） */
+      var lineHidden = pairMode === 4 ? li % 2 === 0 : (pairMode === 5 ? li % 2 === 1 : false);
 
       chars.forEach(function (ch, ci) {
         if (!HANZI.test(ch)) {
@@ -1167,22 +1402,21 @@
         cell.appendChild(el('span', 'tone',
           state.showTone ? (tone === 1 || tone === 2 ? '○' : (tone >= 3 ? '●' : '·')) : ''));
 
-        if (state.recite > 0) {
-          var masked = state.recite === 3 ||
-            (state.recite === 2 && hanziIdx % 2 === 1) ||
-            (state.recite === 1 && hanziIdx > 0) ||
-            (state.recite === 4 && li % 2 === 0) ||
-            (state.recite === 5 && li % 2 === 1);
-          if (masked && !state.revealed[li + '-' + ci]) {
-            cell.className += ' masked';
-            (function (key) {
-              cell.addEventListener('click', function (ev) {
-                ev.stopPropagation();
-                state.revealed[key] = true;
-                refreshVerse(host, p);
-              });
-            })(li + '-' + ci);
-          }
+        /* 亲子对背行整行隐藏，或背诵强度按字隐藏 */
+        var masked = lineHidden ||
+          (intensity === 3) ||
+          (intensity === 2 && hanziIdx % 2 === 1) ||
+          (intensity === 1 && hanziIdx > 0);
+        if (masked && !state.revealed[li + '-' + ci]) {
+          cell.className += ' masked';
+          (function (key) {
+            cell.addEventListener('click', function (ev) {
+              ev.stopPropagation();
+              state.revealed[key] = true;
+              refreshVerse(host, p);
+            });
+            btnify(cell, '查看被遮挡的字');
+          })(li + '-' + ci);
         }
         hanziIdx++;
         row.appendChild(cell);
@@ -1245,6 +1479,7 @@
         if (!right) b.className += ' wrong';
         setTimeout(function () { onDone(right); }, 900);
       });
+      btnify(b, opt);
       host.appendChild(b);
     });
   }
@@ -1269,10 +1504,14 @@
     var ROUNDS = 5, round = 0, score = 0;
     var pool = POEMS.filter(function (p) { return p.img.length > 0; });
     function draw() {
+      if (!inView('guess')) return;
       app.innerHTML = '';
+      window.scrollTo(0, 0);
+    window.scrollTo(0, 0);
       var wrap = el('div', 'wrap');
-      wrap.appendChild(backBtn('← 退出'));
+      wrap.appendChild(backBtn('← 退出', '#/practice'));
       if (round >= ROUNDS) {
+        bestSet('guess', score);
         resultScreen(wrap, score + ' / ' + ROUNDS,
           score >= 4 ? '看图识诗，厉害！' : '多看看诗意图再来', renderGuess);
         app.appendChild(wrap);
@@ -1303,10 +1542,14 @@
       return p.img.filter(function (k) { return BUHUA_KEYS.indexOf(k) >= 0; }).length > 0;
     });
     function draw() {
+      if (!inView('buhua')) return;
       app.innerHTML = '';
+      window.scrollTo(0, 0);
+    window.scrollTo(0, 0);
       var wrap = el('div', 'wrap');
-      wrap.appendChild(backBtn('← 退出'));
+      wrap.appendChild(backBtn('← 退出', '#/practice'));
       if (round >= ROUNDS) {
+        bestSet('buhua', score);
         resultScreen(wrap, score + ' / ' + ROUNDS,
           score >= 4 ? '意象观察家！' : '再仔细读读诗句', renderBuhua);
         app.appendChild(wrap);
@@ -1334,7 +1577,10 @@
           toast('补上了！');
           setTimeout(function () { round++; draw(); }, 1000);
         } else {
+          /* 答错不清掉正确高亮，重试就泄题了：重置所有选项样式后放行 */
           host.removeAttribute('data-done');
+          var os = host.querySelectorAll('.quiz-option');
+          for (var oi = 0; oi < os.length; oi++) os[oi].className = 'quiz-option';
           toast('再想想，诗句里写了什么？');
         }
       });
@@ -1356,9 +1602,12 @@
     var sel = -1;
 
     function draw() {
+      if (!inView('puzzle')) return;
       app.innerHTML = '';
+      window.scrollTo(0, 0);
+    window.scrollTo(0, 0);
       var wrap = el('div', 'wrap');
-      wrap.appendChild(backBtn('← 退出'));
+      wrap.appendChild(backBtn('← 退出', '#/practice'));
       wrap.appendChild(el('div', 'quiz-progress',
         '《' + p.t + '》' + p.a + ' · 诗句顺序被打乱了'));
       wrap.appendChild(el('div', 'dz-tip', '点两张卡片交换位置，排回正确顺序'));
@@ -1376,6 +1625,7 @@
             }
             draw();
           });
+          btnify(card, '第 ' + (pos + 1) + ' 句卡片');
         })(pos);
         host.appendChild(card);
       });
@@ -1441,10 +1691,14 @@
 
     var ROUNDS = 5, round = 0, score = 0;
     function draw() {
+      if (!inView('duizi')) return;
       app.innerHTML = '';
+      window.scrollTo(0, 0);
+    window.scrollTo(0, 0);
       var wrap = el('div', 'wrap');
-      wrap.appendChild(backBtn('← 退出'));
+      wrap.appendChild(backBtn('← 退出', '#/practice'));
       if (round >= ROUNDS) {
+        bestSet('duizi', score);
         resultScreen(wrap, score + ' / ' + ROUNDS,
           score >= 4 ? '平仄小高手！' : '记住：一声二声是平，三声四声是仄', renderDuizi);
         app.appendChild(wrap);
@@ -1511,8 +1765,9 @@
 
   function renderFeihua() {
     app.innerHTML = '';
+    window.scrollTo(0, 0);
     var wrap = el('div', 'wrap');
-    wrap.appendChild(backBtn('← 退出'));
+    wrap.appendChild(backBtn('← 退出', '#/practice'));
     wrap.appendChild(el('div', 'quiz-progress', '飞花令 · 选一个令字'));
     wrap.appendChild(el('div', 'dz-tip',
       '人机对令：双方轮流说出含令字的诗句，接不上就算输'));
@@ -1526,6 +1781,7 @@
       chip.appendChild(el('span', 'fh-chip-n',
         lines.length + ' 句' + (best[kw] ? ' · 最佳 ' + best[kw] : '')));
       chip.addEventListener('click', function () { playFeihua(kw, lines); });
+      btnify(chip, '令字 ' + kw);
       chips.appendChild(chip);
     });
     wrap.appendChild(chips);
@@ -1538,9 +1794,12 @@
     var streak = 0;   /* 连续接上的轮数 */
 
     function draw() {
+      if (!inView('feihua')) return;
       app.innerHTML = '';
+      window.scrollTo(0, 0);
+    window.scrollTo(0, 0);
       var wrap = el('div', 'wrap');
-      wrap.appendChild(backBtn('← 退出'));
+      wrap.appendChild(backBtn('← 退出', '#/practice'));
       wrap.appendChild(el('div', 'quiz-progress',
         '令字「' + kw + '」 · 已接上 ' + streak + ' 轮'));
 
@@ -1580,8 +1839,10 @@
       var giveup = el('button', 'sheet-btn', '接不上');
       giveup.addEventListener('click', function () {
         app.innerHTML = '';
+      window.scrollTo(0, 0);
+    window.scrollTo(0, 0);
         var w2 = el('div', 'wrap');
-        w2.appendChild(backBtn('← 退出'));
+        w2.appendChild(backBtn('← 退出', '#/practice'));
         endFeihua(w2, kw, streak, all, false);
         app.appendChild(w2);
       });
@@ -1599,6 +1860,10 @@
       store.data._feihuaBest = best;
       store.save();
     }
+    /* 全部令字中的最高纪录（练习中心统一展示） */
+    var top = 0;
+    for (var k in best) if (best[k] > top) top = best[k];
+    bestSet('feihua', top);
     resultScreen(wrap, win ? '全胜 ' + streak + ' 轮！' : '接上 ' + streak + ' 轮',
       win ? '令字「' + kw + '」的库存被你掏空了'
         : '最佳纪录 ' + (best[kw] || 0) + ' 轮 · 下面是所有含「' + kw + '」的诗句',
@@ -1614,6 +1879,7 @@
       row.addEventListener('click', function () {
         location.hash = '#/poem/' + it.p.id;
       });
+      btnify(row, it.text);
       wrap.appendChild(row);
     });
   }
@@ -1676,150 +1942,67 @@
 
   function renderJourney() {
     app.innerHTML = '';
+    window.scrollTo(0, 0);
     var wrap = el('div', 'wrap');
-    wrap.appendChild(backBtn());
     var bar = el('div', 'topbar');
     bar.appendChild(el('div', 'brand', '诗径'));
     bar.appendChild(el('div', 'sub', '背一首，点亮一处 · 从山脚走到山顶'));
     wrap.appendChild(bar);
-    var box = el('div', 'journey-box');
-    var cv = document.createElement('canvas');
-    box.appendChild(cv);
-    wrap.appendChild(box);
-    app.appendChild(wrap);
-
+    wrap.appendChild(navBar('journey'));
+    state.view = 'journey';
     var poems = POEMS.slice().sort(function (a, b) {
       var ka = a.g * 2 + (a.s === '下' ? 1 : 0);
       var kb = b.g * 2 + (b.s === '下' ? 1 : 0);
       return ka - kb;
     });
-    var dpr = Math.min(window.devicePixelRatio || 1, 2);
-    var cssW = wrap.clientWidth || 320;
     var n = poems.length;
-    var cssH = Math.max(1200, n * 34 + 220);
-    cv.width = Math.round(cssW * dpr);
-    cv.height = Math.round(cssH * dpr);
-    cv.style.height = cssH + 'px';
-    var ctx = cv.getContext('2d');
-    ctx.scale(dpr, dpr);
-
-    /* 背景：山脚暖色 → 山顶青黛 */
-    var sky = ctx.createLinearGradient(0, 0, 0, cssH);
-    sky.addColorStop(0, '#c9d4dc');
-    sky.addColorStop(0.25, '#e3e4d8');
-    sky.addColorStop(1, '#f6f1e3');
-    ctx.fillStyle = sky;
-    ctx.fillRect(0, 0, cssW, cssH);
-    /* 山顶远峰 */
-    ctx.fillStyle = 'rgba(90,110,130,0.25)';
-    ctx.beginPath();
-    ctx.moveTo(0, 130);
-    ctx.lineTo(cssW * 0.3, 40);
-    ctx.lineTo(cssW * 0.55, 110);
-    ctx.lineTo(cssW * 0.8, 30);
-    ctx.lineTo(cssW, 120);
-    ctx.lineTo(cssW, 0);
-    ctx.lineTo(0, 0);
-    ctx.closePath();
-    ctx.fill();
-
-    /* 节点位置：之字形山径，自山脚(下)往山顶(上) */
-    var nodes = [];
-    var i, p, x, y;
-    for (i = 0; i < n; i++) {
-      p = poems[i];
-      x = cssW / 2 + Math.sin(i * 0.42) * cssW * 0.3;
-      y = cssH - 90 - i * ((cssH - 240) / (n - 1));
-      nodes.push({ p: p, x: x, y: y });
-    }
-
-    /* 山径连线 */
-    ctx.strokeStyle = 'rgba(138,127,99,0.5)';
-    ctx.lineWidth = 3;
-    ctx.lineCap = 'round';
-    ctx.beginPath();
-    ctx.moveTo(nodes[0].x, nodes[0].y);
-    for (i = 1; i < n; i++) ctx.lineTo(nodes[i].x, nodes[i].y);
-    ctx.stroke();
-
-    /* 年级界标 */
-    var lastGrade = 0;
-    ctx.font = '12px serif';
-    ctx.fillStyle = '#8a7f63';
-    ctx.textAlign = 'left';
-    for (i = 0; i < n; i++) {
-      if (poems[i].g !== lastGrade) {
-        lastGrade = poems[i].g;
-        ctx.fillText('▼ ' + lastGrade + ' 年级',
-          Math.min(nodes[i].x + 22, cssW - 70), nodes[i].y + 4);
-      }
-    }
-
-    /* 下一站（第一首未背） */
-    var nextIdx = -1;
-    for (i = 0; i < n; i++) {
-      if (!store.get(poems[i].id).recited) { nextIdx = i; break; }
-    }
-
-    /* 节点 */
-    for (i = 0; i < n; i++) {
-      var nd = nodes[i];
-      var prog = store.get(nd.p.id);
-      ctx.beginPath();
-      ctx.arc(nd.x, nd.y, 9, 0, Math.PI * 2);
-      if (prog.recited) {
-        ctx.fillStyle = '#b03a2e';
-        ctx.fill();
-        ctx.fillStyle = '#f6f1e3';
-        ctx.font = '10px serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText('✓', nd.x, nd.y + 1);
-        ctx.textBaseline = 'alphabetic';
-      } else if (prog.read) {
-        ctx.fillStyle = '#f6f1e3';
-        ctx.fill();
-        ctx.strokeStyle = '#8a7f63';
-        ctx.lineWidth = 2;
-        ctx.stroke();
-      } else {
-        ctx.fillStyle = 'rgba(138,127,99,0.35)';
-        ctx.fill();
-      }
-      if (i === nextIdx) {
-        ctx.strokeStyle = '#b03a2e';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.arc(nd.x, nd.y, 14, 0, Math.PI * 2);
-        ctx.stroke();
-        ctx.fillStyle = '#b03a2e';
-        ctx.font = '13px "KaiTi","STKaiti",serif';
-        ctx.textAlign = nd.x > cssW * 0.65 ? 'right' : 'left';
-        ctx.fillText('下一站 · 《' + nd.p.t + '》',
-          nd.x > cssW * 0.65 ? nd.x - 20 : nd.x + 20, nd.y + 4);
-      }
-    }
-
-    /* 山脚统计 */
     var done = recitedCount();
-    ctx.fillStyle = '#7a7568';
-    ctx.font = '14px serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('已点亮 ' + done + ' / ' + n + ' 处', cssW / 2, cssH - 30);
-
-    /* 点节点进诗 */
-    cv.addEventListener('click', function (ev) {
-      var rect = cv.getBoundingClientRect();
-      var cx = ev.clientX - rect.left;
-      var cy = ev.clientY - rect.top;
-      for (var i = 0; i < nodes.length; i++) {
-        var dx = cx - nodes[i].x, dy = cy - nodes[i].y;
-        if (dx * dx + dy * dy < 400) {
-          location.hash = '#/poem/' + nodes[i].p.id;
-          return;
-        }
-      }
-    });
+    var next = null;
+    for (var ni = 0; ni < poems.length; ni++) {
+      if (!store.get(poems[ni].id).recited) { next = poems[ni]; break; }
+    }
+    var summary = el('div', 'journey-summary');
+    summary.appendChild(el('div', 'journey-count', done + ' / ' + n));
+    summary.appendChild(el('div', 'journey-copy', done ? '已点亮的诗句，会成为你的路标。' : '从第一首诗开始，点亮自己的诗径。'));
+    wrap.appendChild(summary);
+    if (next) {
+      var nextCard = el('div', 'journey-next');
+      nextCard.appendChild(el('div', 'journey-kicker', '下一站'));
+      nextCard.appendChild(el('div', 'journey-next-title', '《' + next.t + '》'));
+      nextCard.appendChild(el('div', 'journey-next-meta', '【' + next.d + '】' + next.a + ' · ' + next.g + '年级' + (next.s || '')));
+      nextCard.addEventListener('click', function () { location.hash = '#/poem/' + next.id; });
+      btnify(nextCard, '学习下一首《' + next.t + '》');
+      wrap.appendChild(nextCard);
+    }
+    for (var grade = 1; grade <= 6; grade++) {
+      (function (g) {
+        var gradePoems = poems.filter(function (p) { return p.g === g; });
+        var gradeDone = gradePoems.filter(function (p) { return store.get(p.id).recited; }).length;
+        var group = el('div', 'journey-grade' + (next && next.g === g ? ' open' : ''));
+        var gradeHead = el('div', 'journey-grade-head');
+        gradeHead.appendChild(el('span', 'journey-grade-title', g + '年级'));
+        gradeHead.appendChild(el('span', 'journey-grade-count', gradeDone + ' / ' + gradePoems.length + ' 首'));
+        gradeHead.appendChild(el('span', 'journey-grade-arrow', '⌄'));
+        btnify(gradeHead, g + '年级诗单');
+        group.appendChild(gradeHead);
+        var list = el('div', 'journey-grade-list');
+        gradePoems.forEach(function (p) {
+          var prog = store.get(p.id);
+          var row = el('div', 'journey-poem');
+          row.appendChild(el('span', 'journey-state ' + (prog.recited ? 'done' : (prog.read ? 'read' : '')), prog.recited ? '✓' : ''));
+          row.appendChild(el('span', 'journey-poem-title', p.t));
+          row.appendChild(el('span', 'journey-poem-meta', '【' + p.d + '】' + p.a));
+          row.addEventListener('click', function () { saveScroll(navKey()); location.hash = '#/poem/' + p.id; });
+          btnify(row, '学习《' + p.t + '》');
+          list.appendChild(row);
+        });
+        group.appendChild(list);
+        gradeHead.addEventListener('click', function () { group.className = group.className.indexOf(' open') >= 0 ? 'journey-grade' : 'journey-grade open'; });
+        wrap.appendChild(group);
+      })(grade);
+    }
+    app.appendChild(wrap);
+    restoreScroll(navKey());
   }
 
   /* ---------- 启动 ---------- */
