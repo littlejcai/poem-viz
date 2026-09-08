@@ -544,3 +544,64 @@
 .dz-tile.sel { border-color: #6d5f4b; background: #efe8d2; }
 .dz-tile.ok { background: #eef3e6; border-color: #3a7d5d; color: #3a7d5d; }
 .dz-tile.bad { background: #f7e8e6; border-color: #b03a2e; }
+
+/* ---------- 画面互动 ---------- */
+
+.scene-box { position: relative; }
+.fog-layer {
+  position: absolute;
+  left: 0; top: 0;
+  width: 100%; height: 100%;
+  transition: opacity 0.6s;
+  touch-action: none;
+}
+.float-line {
+  position: absolute;
+  z-index: 5;
+  padding: 6px 14px;
+  background: rgba(51, 56, 63, 0.88);
+  color: #f6f1e3;
+  font-size: 15px;
+  font-family: "KaiTi", "STKaiti", serif;
+  border-radius: 999px;
+  pointer-events: none;
+  animation: floatUp 1.9s forwards;
+}
+@keyframes floatUp {
+  0% { opacity: 0; transform: translateY(6px); }
+  15% { opacity: 1; transform: translateY(0); }
+  80% { opacity: 1; }
+  100% { opacity: 0; transform: translateY(-10px); }
+}
+
+/* 画笔写诗 */
+.ch { transition: opacity 0.25s; }
+.ch.w-hide { opacity: 0; }
+.ch.brushing .glyph { color: #b03a2e; }
+
+/* 亲子对背角色标签 */
+.role-tag {
+  margin-left: 10px;
+  align-self: center;
+  font-size: 11px;
+  color: #8a7f63;
+  background: #efe8d2;
+  border-radius: 4px;
+  padding: 2px 6px;
+}
+.role-tag.me { color: #f6f1e3; background: #3a7d5d; }
+
+/* ---------- 诗序拼图 ---------- */
+
+.puzzle-card {
+  margin-bottom: 10px;
+  padding: 13px 16px;
+  background: #fbf8ef;
+  border: 1px solid #d8d0bc;
+  border-radius: 10px;
+  font-size: 17px;
+  font-family: "KaiTi", "STKaiti", serif;
+  cursor: pointer;
+}
+.puzzle-card.sel { border-color: #6d5f4b; background: #efe8d2; }
+.puzzle-card:active { opacity: 0.7; }

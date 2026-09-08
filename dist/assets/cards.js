@@ -36,7 +36,7 @@
 
   /* ---------- 每日一诗日签 ---------- */
 
-  function composeDateCard(poem, date) {
+  function composeDateCard(poem, date, subtitle) {
     var W = 750, H = 1100;
     var card = document.createElement('canvas');
     card.width = W;
@@ -52,7 +52,8 @@
     ctx.fillText(fmtDate(date) + '　星期' + WEEK[date.getDay()], W / 2, 62);
     ctx.fillStyle = INK;
     ctx.font = '20px serif';
-    ctx.fillText('每 日 一 诗', W / 2, 100);
+    var sub = subtitle || '每日一诗';
+    ctx.fillText(sub.split('').join(' '), W / 2, 100);
     ctx.strokeStyle = '#c9bfa4';
     ctx.lineWidth = 1;
     ctx.beginPath();
@@ -247,10 +248,145 @@
     return card;
   }
 
+  /* ---------- 合照卡：孩子照片 + 诗意图 ---------- */
+
+  function composePhotoCard(poem, photo, date) {
+    var W = 750, H = 1000;
+    var card = document.createElement('canvas');
+    card.width = W;
+    card.height = H;
+    var ctx = card.getContext('2d');
+    ctx.fillStyle = PAPER;
+    ctx.fillRect(0, 0, W, H);
+
+    var halfW = 327, phH = 480, top = 24;
+    /* 左：照片 cover 裁剪 */
+    if (photo && photo.width) {
+      var scale = Math.max(halfW / photo.width, phH / photo.height);
+      var dw = photo.width * scale, dh = photo.height * scale;
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(24, top, halfW, phH);
+      ctx.clip();
+      ctx.drawImage(photo, 24 + (halfW - dw) / 2, top + (phH - dh) / 2, dw, dh);
+      ctx.restore();
+    } else {
+      ctx.fillStyle = '#e9e2cd';
+      ctx.fillRect(24, top, halfW, phH);
+    }
+    /* 右：诗意图 */
+    var scene = document.createElement('canvas');
+    scene.width = halfW;
+    scene.height = phH;
+    window.PoemScene.render(scene, poem, {});
+    ctx.drawImage(scene, 24 + halfW + 22, top);
+
+    /* 文字区 */
+    ctx.textAlign = 'center';
+    ctx.fillStyle = INK;
+    ctx.font = '44px "KaiTi","STKaiti",serif';
+    ctx.fillText(poem.t, W / 2, 600);
+    ctx.font = '23px serif';
+    ctx.fillStyle = '#7a7568';
+    ctx.fillText('【' + poem.d + '】' + poem.a, W / 2, 640);
+    ctx.font = '28px "KaiTi","STKaiti",serif';
+    ctx.fillStyle = INK;
+    var lines = poem.l.slice(0, 5);
+    var y = 706;
+    for (var i = 0; i < lines.length; i++) {
+      ctx.fillText(lines[i], W / 2, y);
+      y += 44;
+    }
+    ctx.font = '24px serif';
+    ctx.fillStyle = '#8a7f63';
+    ctx.fillText('我背会了这首诗 · ' + fmtDate(date || new Date()), W / 2, H - 96);
+
+    seal(ctx, W - 100, H - 92, 52, poem.t.charAt(0));
+    ctx.font = '19px serif';
+    ctx.fillStyle = '#9a9484';
+    ctx.textAlign = 'left';
+    ctx.fillText('诗画同源 · 小学必背古诗词', 28, H - 32);
+    return card;
+  }
+
+  /* ---------- 每周战报卡 ---------- */
+
+  function composeWeeklyCard(stats) {
+    var W = 750, H = 1000;
+    var card = document.createElement('canvas');
+    card.width = W;
+    card.height = H;
+    var ctx = card.getContext('2d');
+    ctx.fillStyle = PAPER;
+    ctx.fillRect(0, 0, W, H);
+
+    /* 顶部淡墨山影 */
+    ctx.fillStyle = 'rgba(90,110,130,0.14)';
+    ctx.beginPath();
+    ctx.moveTo(0, 210);
+    ctx.lineTo(W * 0.25, 110);
+    ctx.lineTo(W * 0.5, 190);
+    ctx.lineTo(W * 0.75, 90);
+    ctx.lineTo(W, 180);
+    ctx.lineTo(W, 0);
+    ctx.lineTo(0, 0);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.textAlign = 'center';
+    ctx.fillStyle = INK;
+    ctx.font = '44px "KaiTi","STKaiti",serif';
+    ctx.fillText('本周背诗战报', W / 2, 300);
+    ctx.font = '22px serif';
+    ctx.fillStyle = '#7a7568';
+    ctx.fillText(fmtDate(stats.from) + ' — ' + fmtDate(stats.to), W / 2, 344);
+
+    var items = [
+      [stats.weekCount + ' 首', '本周背诵'],
+      [stats.streak + ' 天', '连续打卡'],
+      [stats.total + ' 首', '累计背诵']
+    ];
+    var colW = W / 3;
+    for (var i = 0; i < 3; i++) {
+      var cx = colW * i + colW / 2;
+      ctx.fillStyle = '#6d5f4b';
+      ctx.font = '44px "KaiTi","STKaiti",serif';
+      ctx.fillText(items[i][0], cx, 480);
+      ctx.fillStyle = '#9a9484';
+      ctx.font = '22px serif';
+      ctx.fillText(items[i][1], cx, 522);
+    }
+
+    ctx.strokeStyle = '#d8d0bc';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(80, 570);
+    ctx.lineTo(W - 80, 570);
+    ctx.stroke();
+
+    ctx.fillStyle = INK;
+    ctx.font = '30px "KaiTi","STKaiti",serif';
+    var msg = stats.weekCount >= 7 ? '日拱一卒，功不唐捐' :
+      stats.weekCount >= 3 ? '积跬步，至千里' : '万事开头难，已出发';
+    ctx.fillText(msg, W / 2, 650);
+    ctx.font = '26px serif';
+    ctx.fillStyle = '#7a7568';
+    ctx.fillText('当前称号：' + tierOf(stats.total), W / 2, 706);
+
+    seal(ctx, W / 2 - 40, H - 220, 80, '诗');
+    ctx.textAlign = 'left';
+    ctx.font = '19px serif';
+    ctx.fillStyle = '#9a9484';
+    ctx.fillText('诗画同源 · 小学必背古诗词', 28, H - 32);
+    return card;
+  }
+
   window.PoemCards = {
     composeDateCard: composeDateCard,
     composeAwardCard: composeAwardCard,
     composeCopybook: composeCopybook,
+    composePhotoCard: composePhotoCard,
+    composeWeeklyCard: composeWeeklyCard,
     tierOf: tierOf,
     TIERS: TIERS
   };

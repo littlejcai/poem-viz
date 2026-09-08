@@ -102,6 +102,7 @@
     ctx.arc(x, y, r, 0, Math.PI * 2);
     ctx.fillStyle = '#c96f4a';
     ctx.fill();
+    return { x: x, y: y, r: r };
   }
 
   function stars(ctx, w, h, rng) {
@@ -663,7 +664,10 @@
     }
   }
 
-  /* ---------- 主渲染 ---------- */
+  /* ---------- 主渲染 ----------
+   * opts.exclude：跳过某个意象元素（补画游戏用）
+   * 画布上会挂 canvas._hotspots：[{key,x,y,r}]（点画出诗用）
+   */
 
   function render(canvas, poem, opts) {
     opts = opts || {};
@@ -675,6 +679,10 @@
     var season = mood[0], tod = mood[1];
     var night = has(poem, 'moon') || has(poem, 'star') || tod === 'night' ||
       (has(poem, 'lamp') && !has(poem, 'sun'));
+    var excl = opts.exclude || null;
+    function H(key) { return has(poem, key) && key !== excl; }
+    var hotspots = [];
+    function spot(key, x, y, r) { hotspots.push({ key: key, x: x, y: y, r: r }); }
 
     /* 天空：按时辰与季节调色 */
     var sky = ctx.createLinearGradient(0, 0, 0, h);
@@ -708,72 +716,102 @@
 
     /* 天体 */
     var moonPos = null;
-    if (has(poem, 'star')) stars(ctx, w, h, rng);
-    if (has(poem, 'moon')) moonPos = moon(ctx, w, h, rng);
-    else if (has(poem, 'sun')) sun(ctx, w, h, rng);
-    if (has(poem, 'cloud')) clouds(ctx, w, h, rng, night);
+    if (H('star')) stars(ctx, w, h, rng);
+    if (H('moon')) {
+      moonPos = moon(ctx, w, h, rng);
+      spot('moon', moonPos.x, moonPos.y, moonPos.r * 1.6);
+    } else if (H('sun')) {
+      var sunPos = sun(ctx, w, h, rng);
+      spot('sun', sunPos.x, sunPos.y, sunPos.r * 1.6);
+    }
+    if (H('cloud')) clouds(ctx, w, h, rng, night);
 
     /* 远景 */
-    if (has(poem, 'mountain')) mountains(ctx, w, h, rng);
-    if (has(poem, 'field')) field(ctx, w, h, rng);
-    if (has(poem, 'water')) water(ctx, w, h, rng, moonPos);
+    if (H('mountain')) mountains(ctx, w, h, rng);
+    if (H('field')) field(ctx, w, h, rng);
+    if (H('water')) water(ctx, w, h, rng, moonPos);
 
     /* 中景建筑 */
-    if (has(poem, 'building')) {
+    if (H('building')) {
       var bx = rng() > 0.5 ? w * 0.24 : w * 0.76;
       building(ctx, bx, h * 0.62, w * 0.16, rng);
+      spot('building', bx, h * 0.5, w * 0.12);
     }
 
     /* 瀑布专绘：覆盖默认山体 */
-    if (/瀑布|飞流/.test(text)) waterfall(ctx, w, h, rng);
+    if (!excl && /瀑布|飞流/.test(text)) {
+      waterfall(ctx, w, h, rng);
+      spot('water', w * 0.5, h * 0.45, w * 0.14);
+    }
 
     /* 前景植物 */
     var plantX = rng() > 0.5 ? w * 0.16 : w * 0.84;
     var groundY = h * 0.94;
-    if (has(poem, 'willow')) willow(ctx, plantX, groundY, h * 0.3, rng);
-    else if (has(poem, 'tree')) {
+    if (H('willow')) {
+      willow(ctx, plantX, groundY, h * 0.3, rng);
+      spot('willow', plantX, groundY - h * 0.18, w * 0.1);
+    } else if (H('tree')) {
       if (rng() > 0.5) pine(ctx, plantX, groundY, h * 0.26, rng);
       else bamboo(ctx, plantX - w * 0.05, groundY, h * 0.24, rng);
+      spot('tree', plantX, groundY - h * 0.15, w * 0.1);
     }
     var isLotus = /[荷莲]/.test(text) && has(poem, 'water');
-    if (has(poem, 'flower') && !isLotus) {
+    if (H('flower') && !isLotus) {
       var fx = w - plantX;
       var fColor = night ? 'rgba(200,140,150,0.85)'
         : season === 'autumn' ? 'rgba(181,101,74,0.92)'
         : 'rgba(192,91,107,0.9)';
       blossoms(ctx, fx, groundY, h * 0.24, rng, fColor);
+      spot('flower', fx, groundY - h * 0.15, w * 0.1);
     }
-    if (isLotus) lotus(ctx, w, h, rng);
-    if (has(poem, 'grass')) grass(ctx, w, h, rng);
+    if (isLotus && H('water')) {
+      lotus(ctx, w, h, rng);
+      spot('flower', w * 0.5, h * 0.72, w * 0.12);
+    }
+    if (H('grass')) grass(ctx, w, h, rng);
 
     /* 点景 */
-    if (has(poem, 'boat')) {
+    if (H('boat')) {
+      var boatX = w * (0.35 + rng() * 0.3);
       var by = has(poem, 'water') ? h * (0.72 + rng() * 0.12) : h * 0.8;
-      boat(ctx, w * (0.35 + rng() * 0.3), by, w * 0.16, rng);
+      boat(ctx, boatX, by, w * 0.16, rng);
+      spot('boat', boatX, by, w * 0.12);
     }
-    if (has(poem, 'bridge') || (has(poem, 'building') && rng() > 0.7)) {
+    if (has(poem, 'building') && excl !== 'building' && rng() > 0.7) {
       bridge(ctx, w * 0.5, h * 0.78, w * 0.3);
     }
-    if (has(poem, 'person')) {
-      person(ctx, w * (0.3 + rng() * 0.4), h * 0.9, h * 0.16);
+    if (H('person')) {
+      var px = w * (0.3 + rng() * 0.4);
+      person(ctx, px, h * 0.9, h * 0.16);
+      spot('person', px, h * 0.82, w * 0.09);
     }
-    if (has(poem, 'horse')) horse(ctx, w * (0.3 + rng() * 0.4), h * 0.9, w * 0.12);
-    if (has(poem, 'bird')) {
-      var waterFowl = /[鹅鸭鸳]/.test(poem.t + poem.l.join(''));
+    if (H('horse')) {
+      var hx = w * (0.3 + rng() * 0.4);
+      horse(ctx, hx, h * 0.9, w * 0.12);
+      spot('horse', hx, h * 0.82, w * 0.1);
+    }
+    if (H('bird')) {
+      var waterFowl = /[鹅鸭鸳]/.test(text);
       if (has(poem, 'water') && (waterFowl || rng() > 0.4)) {
-        goose(ctx, w * (0.3 + rng() * 0.3), h * (0.74 + rng() * 0.1), w * 0.14);
+        var gx = w * (0.3 + rng() * 0.3);
+        var gy = h * (0.74 + rng() * 0.1);
+        goose(ctx, gx, gy, w * 0.14);
+        spot('bird', gx, gy - w * 0.05, w * 0.1);
       } else {
         birdsFlying(ctx, w, h, rng, 3 + Math.floor(rng() * 4));
+        spot('bird', w * 0.5, h * 0.2, w * 0.12);
       }
     }
-    if (has(poem, 'lamp')) {
-      lampGlow(ctx, w * (0.35 + rng() * 0.3), h * 0.58, w * 0.05);
+    if (H('lamp')) {
+      var lx = w * (0.35 + rng() * 0.3);
+      lampGlow(ctx, lx, h * 0.58, w * 0.05);
+      spot('lamp', lx, h * 0.58, w * 0.09);
     }
 
     /* 天气覆盖 */
-    if (has(poem, 'rain')) rain(ctx, w, h, rng);
-    if (has(poem, 'snow')) snow(ctx, w, h, rng);
-    if (has(poem, 'wind')) wind(ctx, w, h, rng);
+    if (H('rain')) rain(ctx, w, h, rng);
+    if (H('snow')) snow(ctx, w, h, rng);
+    if (H('wind')) wind(ctx, w, h, rng);
 
     /* 雾气 + 纸纹 + 边缘墨色 */
     mist(ctx, w, h * 0.58, h * 0.06, night ? 0.25 : 0.4);
@@ -790,6 +828,7 @@
     if (opts.sealText) {
       seal(ctx, w - w * 0.09, h - w * 0.09 - h * 0.02, w * 0.065, opts.sealText);
     }
+    canvas._hotspots = hotspots;
     return canvas;
   }
 
