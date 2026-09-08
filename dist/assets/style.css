@@ -605,3 +605,47 @@
 }
 .puzzle-card.sel { border-color: #6d5f4b; background: #efe8d2; }
 .puzzle-card:active { opacity: 0.7; }
+
+/* ---------- 飞花令 ---------- */
+
+.fh-chips {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  padding: 8px 4px 16px;
+}
+.fh-chip {
+  padding: 12px 8px;
+  background: #fbf8ef;
+  border: 1px solid #d8d0bc;
+  border-radius: 12px;
+  text-align: center;
+  cursor: pointer;
+}
+.fh-chip:active { opacity: 0.7; }
+.fh-chip-kw {
+  display: block;
+  font-size: 28px;
+  font-family: "KaiTi", "STKaiti", serif;
+  color: #6d5f4b;
+}
+.fh-chip-n { display: block; margin-top: 4px; font-size: 11px; color: #9a9484; }
+
+.fh-lines { padding-bottom: 10px; }
+.fh-line {
+  margin-bottom: 8px;
+  padding: 12px 14px;
+  background: #fbf8ef;
+  border: 1px solid #e4dcc6;
+  border-radius: 10px;
+}
+.fh-line.mine { border-color: #6d5f4b; background: #efe8d2; }
+.fh-line.fh-line-all { cursor: pointer; }
+.fh-line.fh-line-all:active { opacity: 0.7; }
+.fh-line-text {
+  display: block;
+  font-size: 17px;
+  font-family: "KaiTi", "STKaiti", serif;
+  letter-spacing: 1px;
+}
+.fh-line-src { display: block; margin-top: 4px; font-size: 12px; color: #9a9484; }

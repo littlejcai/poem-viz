@@ -210,6 +210,7 @@
     else if (v === 'buhua') renderBuhua();
     else if (v === 'puzzle') renderPuzzle();
     else if (v === 'duizi') renderDuizi();
+    else if (v === 'feihua') renderFeihua();
     else if (v === 'journey') renderJourney();
     else {
       state.imgFilter = v === 'list' && parts[1] ? decodeURIComponent(parts[1]) : null;
@@ -517,7 +518,8 @@
       ['#/buhua', '补画', '画里少了什么？补上正确的意象'],
       ['#/puzzle', '诗序拼图', '诗句被打乱了，点两张卡片交换位置复原'],
       ['#/duizhang', '对仗连连看', '律诗对仗字配对 · 感受格律之美'],
-      ['#/duizi', '平仄对对子', '按平仄提示，填出对句的字']
+      ['#/duizi', '平仄对对子', '按平仄提示，填出对句的字'],
+      ['#/feihua', '飞花令', '人机对令：轮流说出含令字的诗句']
     ];
     entries.forEach(function (en) {
       var card = el('div', 'poem-card practice-card');
@@ -1486,7 +1488,137 @@
     draw();
   }
 
-  /* ---------- 节气日签 ---------- */
+  /* ---------- 飞花令（人机对令） ---------- */
+
+  var FEIHUA_KWS = ['花', '月', '山', '水', '风', '雪', '云', '雨',
+    '鸟', '春', '江', '夜', '日', '天', '柳'];
+
+  function feihuaLines(kw) {
+    var seen = {};
+    var out = [];
+    POEMS.forEach(function (p) {
+      p.l.forEach(function (line) {
+        var clean = line.replace(/[，。！？；、：…]/g, '');
+        if (clean.indexOf(kw) < 0 || seen[clean]) return;
+        seen[clean] = true;
+        out.push({ p: p, text: line });
+      });
+    });
+    return out;
+  }
+
+  function feihuaBest() { return store.data._feihuaBest || {}; }
+
+  function renderFeihua() {
+    app.innerHTML = '';
+    var wrap = el('div', 'wrap');
+    wrap.appendChild(backBtn('← 退出'));
+    wrap.appendChild(el('div', 'quiz-progress', '飞花令 · 选一个令字'));
+    wrap.appendChild(el('div', 'dz-tip',
+      '人机对令：双方轮流说出含令字的诗句，接不上就算输'));
+    var best = feihuaBest();
+    var chips = el('div', 'fh-chips');
+    FEIHUA_KWS.forEach(function (kw) {
+      var lines = feihuaLines(kw);
+      if (lines.length < 5) return;
+      var chip = el('div', 'fh-chip');
+      chip.appendChild(el('span', 'fh-chip-kw', kw));
+      chip.appendChild(el('span', 'fh-chip-n',
+        lines.length + ' 句' + (best[kw] ? ' · 最佳 ' + best[kw] : '')));
+      chip.addEventListener('click', function () { playFeihua(kw, lines); });
+      chips.appendChild(chip);
+    });
+    wrap.appendChild(chips);
+    app.appendChild(wrap);
+  }
+
+  function playFeihua(kw, all) {
+    var deck = shuffle(all.slice());
+    var idx = 0;      /* 已出到第几句 */
+    var streak = 0;   /* 连续接上的轮数 */
+
+    function draw() {
+      app.innerHTML = '';
+      var wrap = el('div', 'wrap');
+      wrap.appendChild(backBtn('← 退出'));
+      wrap.appendChild(el('div', 'quiz-progress',
+        '令字「' + kw + '」 · 已接上 ' + streak + ' 轮'));
+
+      /* 已出过的诗句 */
+      var played = el('div', 'fh-lines');
+      deck.slice(0, idx).forEach(function (it) {
+        var row = el('div', 'fh-line');
+        row.appendChild(el('span', 'fh-line-text', it.text));
+        row.appendChild(el('span', 'fh-line-src', '《' + it.p.t + '》' + it.p.a));
+        played.appendChild(row);
+      });
+      wrap.appendChild(played);
+
+      if (idx >= deck.length) {
+        /* 题库出完：全胜 */
+        endFeihua(wrap, kw, streak, all, true);
+        app.appendChild(wrap);
+        return;
+      }
+
+      /* 我出一句 */
+      var mine = deck[idx];
+      var mineRow = el('div', 'fh-line mine');
+      mineRow.appendChild(el('span', 'fh-line-text', mine.text));
+      mineRow.appendChild(el('span', 'fh-line-src',
+        '我出：《' + mine.p.t + '》' + mine.p.a));
+      wrap.appendChild(mineRow);
+
+      wrap.appendChild(el('div', 'dz-tip',
+        '轮到你：说出一句含「' + kw + '」的诗句'));
+      var ok = el('button', 'sheet-btn primary', '接上了！');
+      ok.addEventListener('click', function () {
+        streak++;
+        idx++;
+        draw();
+      });
+      var giveup = el('button', 'sheet-btn', '接不上');
+      giveup.addEventListener('click', function () {
+        app.innerHTML = '';
+        var w2 = el('div', 'wrap');
+        w2.appendChild(backBtn('← 退出'));
+        endFeihua(w2, kw, streak, all, false);
+        app.appendChild(w2);
+      });
+      wrap.appendChild(ok);
+      wrap.appendChild(giveup);
+      app.appendChild(wrap);
+    }
+    draw();
+  }
+
+  function endFeihua(wrap, kw, streak, all, win) {
+    var best = feihuaBest();
+    if (streak > (best[kw] || 0)) {
+      best[kw] = streak;
+      store.data._feihuaBest = best;
+      store.save();
+    }
+    resultScreen(wrap, win ? '全胜 ' + streak + ' 轮！' : '接上 ' + streak + ' 轮',
+      win ? '令字「' + kw + '」的库存被你掏空了'
+        : '最佳纪录 ' + (best[kw] || 0) + ' 轮 · 下面是所有含「' + kw + '」的诗句',
+      renderFeihua);
+
+    /* 学习清单：所有含令字的诗句 */
+    var listTitle = el('div', 'dz-tip', '含「' + kw + '」的诗句（共 ' + all.length + ' 句）');
+    wrap.appendChild(listTitle);
+    all.forEach(function (it) {
+      var row = el('div', 'fh-line fh-line-all');
+      row.appendChild(el('span', 'fh-line-text', it.text));
+      row.appendChild(el('span', 'fh-line-src', '《' + it.p.t + '》' + it.p.a));
+      row.addEventListener('click', function () {
+        location.hash = '#/poem/' + it.p.id;
+      });
+      wrap.appendChild(row);
+    });
+  }
+
+
 
   /* [名称, 月, 日(近似), 季节, 检索关键词] */
   var SOLAR_TERMS = [
