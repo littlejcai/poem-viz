@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>诗画同源 · 逻辑一 · 复古未来太空图录</title>
+<style>
+  :root{
+    --ink:#0A0A0A;          /* 纯黑底 · 夜空 */
+    --ink2:#141412;         /* 次一级黑 */
+    --cream:#F0EAD8;        /* 奶油纸白 */
+    --cream-dim:#B7B0A0;    /* 次级文字（对比度>7:1） */
+    --cobalt:#2B4F91;       /* 钴蓝 · 图录蓝 */
+    --cobalt-lt:#7E9BD6;    /* 钴蓝提亮（仅小字/线用） */
+    --cinnabar:#A8402F;     /* 朱砂 · 印章（产品固有元素，极小面积） */
+    --hair:rgba(240,234,216,.28);
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html,body{background:#050505;}
+  body{
+    width:1440px;height:900px;overflow:hidden;position:relative;
+    font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
+    color:var(--cream);
+  }
+  .kai{font-family:KaiTi,STKaiti,"Kaiti SC","STKaiti","楷体",serif;}
+  .mono{font-family:Consolas,"Courier New",monospace;}
+  .serif{font-family:Georgia,"Times New Roman",KaiTi,STKaiti,serif;}
+
+  /* ---------- 画布：星野 ---------- */
+  .stars{position:absolute;inset:0;pointer-events:none;}
+  .stars i{position:absolute;width:1px;height:1px;background:rgba(240,234,216,.55);border-radius:50%;}
+  .canvas-title{
+    position:absolute;left:0;right:0;top:20px;text-align:center;
+    font-size:12px;letter-spacing:8px;color:rgba(240,234,216,.5);
+  }
+
+  /* ---------- 手机设备 ---------- */
+  .stage{position:absolute;top:56px;left:0;right:0;display:flex;justify-content:center;gap:52px;}
+  .device{width:375px;}
+  .screen{
+    width:375px;height:812px;background:var(--ink);
+    border:1px solid rgba(240,234,216,.35);border-radius:44px;
+    position:relative;overflow:hidden;
+    box-shadow:0 0 0 6px #111, 0 30px 60px rgba(0,0,0,.7);
+  }
+  .caption{margin-top:14px;text-align:center;font-size:12px;letter-spacing:3px;color:rgba(240,234,216,.55);}
+
+  /* 状态栏 + home 指示 */
+  .statusbar{height:40px;display:flex;align-items:center;justify-content:space-between;padding:0 26px;font-size:13px;color:var(--cream);}
+  .notch{position:absolute;top:12px;left:50%;transform:translateX(-50%);width:110px;height:26px;background:#050505;border-radius:14px;}
+  .homebar{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:120px;height:4px;border-radius:2px;background:rgba(240,234,216,.5);}
+  .screen-stars{position:absolute;inset:0;pointer-events:none;}
+  .screen-stars i{position:absolute;width:1px;height:1px;background:rgba(240,234,216,.4);border-radius:50%;}
+
+  .hairline-t{border-top:1px solid var(--hair);}
+  .hairline-b{border-bottom:1px solid var(--hair);}
+
+  /* ---------- 通用组件 ---------- */
+  .seal{
+    display:inline-flex;align-items:center;justify-content:center;
+    width:26px;height:26px;background:var(--cinnabar);color:var(--cream);
+    border-radius:4px;font-size:15px;transform:rotate(-3deg);
+    box-shadow:inset 0 0 0 1px rgba(240,234,216,.5);
+  }
+  .chip{
+    display:inline-flex;align-items:center;justify-content:center;
+    height:30px;min-width:30px;padding:0 8px;border:1px solid var(--hair);
+    border-radius:15px;font-size:13px;color:var(--cream-dim);
+  }
+  .chip.on{border-color:var(--cobalt-lt);color:var(--cream);background:rgba(43,79,145,.35);}
+  .tag{
+    display:inline-block;font-size:12px;color:var(--cobalt-lt);
+    border:1px solid rgba(126,155,214,.5);border-radius:3px;padding:1px 6px;letter-spacing:1px;
+  }
+
+  /* ================= 屏 1 · 诗集列表 ================= */
+  .s1-head{padding:6px 20px 14px;}
+  .s1-brand{display:flex;align-items:center;gap:10px;}
+  .s1-brand .name{font-size:20px;letter-spacing:6px;}
+  .s1-brand .sub{margin-left:auto;font-size:12px;letter-spacing:2px;color:var(--cream-dim);}
+  .s1-catalog{margin-top:12px;display:flex;align-items:baseline;gap:10px;white-space:nowrap;}
+  .s1-catalog .big{font-size:25px;letter-spacing:2px;}
+  .s1-catalog .note{font-size:12px;color:var(--cream-dim);letter-spacing:1px;}
+  .s1-catalog .no{margin-left:auto;font-size:12px;color:var(--cobalt-lt);letter-spacing:1px;}
+  .s1-epigraph{margin-top:8px;font-size:13px;color:var(--cream-dim);letter-spacing:2px;}
+
+  .search{
+    margin:14px 20px 0;height:38px;border:1px solid var(--hair);border-radius:19px;
+    display:flex;align-items:center;gap:8px;padding:0 14px;font-size:13px;color:var(--cream-dim);
+  }
+
+  .grades{display:flex;gap:8px;padding:12px 20px 4px;align-items:center;}
+  .grades .label{font-size:12px;color:var(--cream-dim);letter-spacing:2px;margin-right:2px;}
+
+  .poem-list{padding:8px 20px 0;}
+  .poem-card{display:flex;gap:12px;padding:12px 0;border-bottom:1px solid var(--hair);align-items:center;}
+  .poem-thumb{width:56px;height:56px;flex:none;border:1px solid var(--hair);border-radius:6px;overflow:hidden;position:relative;background:var(--ink2);}
+  .poem-info{flex:1;min-width:0;}
+  .poem-title{font-size:19px;letter-spacing:3px;line-height:1.2;}
+  .poem-meta{margin-top:3px;font-size:12px;color:var(--cream-dim);letter-spacing:1px;}
+  .poem-line{margin-top:4px;font-size:13px;color:var(--cream);letter-spacing:1px;}
+  .poem-no{font-size:11px;color:var(--cobalt-lt);letter-spacing:1px;text-align:right;line-height:1.5;}
+
+  .tabbar{
+    position:absolute;left:0;right:0;bottom:0;height:64px;
+    border-top:1px solid var(--hair);background:rgba(10,10,10,.92);
+    display:flex;align-items:flex-start;padding-top:8px;
+  }
+  .tab{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--cream-dim);}
+  .tab.on{color:var(--cream);}
+  .tab svg{display:block;}
+  .tab span{font-size:11px;letter-spacing:2px;}
+
+  /* ================= 屏 2 · 诗详情《山行》 ================= */
+  .s2-nav{height:42px;display:flex;align-items:center;padding:0 18px;gap:10px;}
+  .s2-nav .back{width:26px;height:26px;border:1px solid var(--hair);border-radius:50%;display:flex;align-items:center;justify-content:center;}
+  .s2-nav .t{font-size:15px;letter-spacing:3px;}
+  .s2-nav .no{margin-left:auto;font-size:11px;color:var(--cobalt-lt);letter-spacing:1px;}
+
+  .painting{margin:4px 18px 0;height:236px;border:1px solid var(--hair);border-radius:8px;overflow:hidden;position:relative;}
+  .painting .cap{position:absolute;left:10px;bottom:8px;font-size:11px;letter-spacing:2px;color:rgba(240,234,216,.75);}
+
+  .s2-title-row{display:flex;align-items:baseline;gap:12px;padding:14px 20px 0;}
+  .s2-title{font-size:28px;letter-spacing:8px;}
+  .s2-author{font-size:13px;color:var(--cream-dim);letter-spacing:2px;}
+  .s2-title-row .tag{margin-left:auto;}
+
+  .annot-toggle{display:flex;gap:6px;padding:10px 20px 0;}
+  .annot-toggle .chip{height:26px;font-size:12px;}
+
+  .poem-body{padding:10px 20px 0;text-align:center;}
+  .pline{margin-bottom:9px;}
+  .pline .py{font-family:"Times New Roman",Georgia,serif;font-size:12px;color:var(--cream-dim);letter-spacing:1px;margin-bottom:2px;}
+  .pline .tx{font-size:21px;letter-spacing:6px;}
+  .tone-strip{
+    margin:2px 20px 0;display:flex;justify-content:center;gap:10px;align-items:center;
+    font-size:12px;color:var(--cream-dim);letter-spacing:1px;
+  }
+  .tone-strip b{font-weight:normal;color:var(--cobalt-lt);}
+
+  .tools{display:flex;gap:8px;padding:12px 20px 0;}
+  .tool{
+    flex:1;height:40px;border:1px solid var(--hair);border-radius:6px;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
+    color:var(--cream-dim);
+  }
+  .tool svg{display:block;}
+  .tool span{font-size:11px;letter-spacing:1px;}
+
+  .recite{
+    margin:12px 20px 0;height:52px;border-radius:26px;background:var(--cobalt);
+    display:flex;align-items:center;justify-content:center;gap:10px;
+    font-size:16px;letter-spacing:3px;color:var(--cream);
+    box-shadow:0 0 0 1px rgba(126,155,214,.6), 0 6px 18px rgba(43,79,145,.45);
+  }
+
+  /* ================= 屏 3 · 诗径星图 ================= */
+  .s3-head{padding:6px 20px 10px;}
+  .s3-title-row{display:flex;align-items:baseline;gap:10px;}
+  .s3-title{font-size:24px;letter-spacing:6px;}
+  .s3-title-row .no{margin-left:auto;font-size:11px;color:var(--cobalt-lt);letter-spacing:1px;}
+  .s3-sub{margin-top:6px;font-size:13px;color:var(--cream-dim);letter-spacing:2px;display:flex;align-items:center;gap:8px;}
+
+  .starmap{margin:6px 18px 0;height:438px;border:1px solid var(--hair);border-radius:8px;position:relative;overflow:hidden;background:
+    radial-gradient(circle at 78% 12%, rgba(43,79,145,.35), rgba(10,10,10,0) 55%),
+    var(--ink2);}
+  .legend{
+    position:absolute;left:10px;top:10px;font-size:11px;color:var(--cream-dim);letter-spacing:1px;line-height:1.9;
+    background:rgba(10,10,10,.55);border:1px solid var(--hair);border-radius:6px;padding:6px 9px;
+  }
+  .legend i{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:6px;vertical-align:1px;}
+
+  .report{
+    margin:12px 20px 0;border:1px solid var(--hair);border-radius:8px;padding:12px 14px;
+    background:var(--ink2);
+  }
+  .report .rt{font-size:13px;letter-spacing:3px;color:var(--cream);display:flex;align-items:center;gap:8px;}
+  .report .rt .no{margin-left:auto;font-size:11px;color:var(--cobalt-lt);letter-spacing:1px;}
+  .report .row{display:flex;margin-top:10px;}
+  .report .cell{flex:1;text-align:center;border-right:1px solid var(--hair);}
+  .report .cell:last-child{border-right:none;}
+  .report .num{font-size:24px;letter-spacing:1px;}
+  .report .lab{margin-top:2px;font-size:12px;color:var(--cream-dim);letter-spacing:1px;}
+  .report .rank{color:var(--cinnabar);font-size:20px;letter-spacing:2px;}
+</style>
+</head>
+<body>
+
+<!-- 画布星野 -->
+<div class="stars" id="canvasStars"></div>
+<div class="canvas-title">诗画同源 · 界面重设计 · 逻辑一「星汉图录」</div>
+
+<div class="stage">
+
+  <!-- ============ 屏 1 · 诗集列表首页 ============ -->
+  <div class="device">
+    <div class="screen">
+      <div class="screen-stars" data-stars="1"></div>
+      <div class="notch"></div>
+      <div class="statusbar"><span class="mono">9:41</span><span class="mono" style="font-size:12px;letter-spacing:2px;">诗画同源</span></div>
+
+      <div class="s1-head">
+        <div class="s1-brand">
+          <span class="seal kai">诗</span>
+          <span class="name kai">诗画同源</span>
+          <span class="sub mono">ATLAS&nbsp;OF&nbsp;POEMS</span>
+        </div>
+        <div class="s1-catalog">
+          <span class="big serif">一百三十首</span>
+          <span class="note">课内必背 · 六卷</span>
+          <span class="no mono">VOL.Ⅰ–Ⅵ</span>
+        </div>
+        <div class="s1-epigraph kai">星汉灿烂，若出其里。</div>
+      </div>
+
+      <div class="search">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="6" cy="6" r="4.5" stroke="#B7B0A0" stroke-width="1.2"/><path d="M9.5 9.5 L13 13" stroke="#B7B0A0" stroke-width="1.2"/></svg>
+        搜索诗名 / 作者 / 诗句
+      </div>
+
+      <div class="grades">
+        <span class="label">年级</span>
+        <span class="chip">一</span><span class="chip">二</span><span class="chip on">三</span>
+        <span class="chip">四</span><span class="chip">五</span><span class="chip">六</span>
+      </div>
+
+      <div class="poem-list">
+        <div class="poem-card">
+          <div class="poem-thumb">
+            <svg width="56" height="56" viewBox="0 0 56 56">
+              <rect width="56" height="56" fill="#141412"/>
+              <circle cx="40" cy="14" r="7" fill="#F0EAD8"/>
+              <path d="M0 44 Q14 30 28 40 T56 36 L56 56 L0 56 Z" fill="#2B4F91" opacity=".85"/>
+              <path d="M0 50 Q18 40 34 47 T56 46 L56 56 L0 56 Z" fill="#0A0A0A"/>
+              <circle cx="12" cy="12" r="1" fill="#F0EAD8" opacity=".7"/><circle cx="24" cy="8" r="1" fill="#F0EAD8" opacity=".5"/>
+            </svg>
+          </div>
+          <div class="poem-info">
+            <div class="poem-title kai">山行</div>
+            <div class="poem-meta">唐 · 杜牧 · 三年级上</div>
+            <div class="poem-line kai">霜叶红于二月花</div>
+          </div>
+          <div class="poem-no mono">诗录<br>No.061</div>
+        </div>
+
+        <div class="poem-card">
+          <div class="poem-thumb">
+            <svg width="56" height="56" viewBox="0 0 56 56">
+              <rect width="56" height="56" fill="#141412"/>
+              <ellipse cx="28" cy="40" rx="22" ry="9" fill="#2B4F91" opacity=".7"/>
+              <path d="M20 38 q4 -10 8 0 q4 -10 8 0" stroke="#F0EAD8" fill="none" stroke-width="1.6"/>
+              <circle cx="42" cy="12" r="5" fill="#F0EAD8" opacity=".9"/>
+              <circle cx="10" cy="14" r="1" fill="#F0EAD8" opacity=".6"/>
+            </svg>
+          </div>
+          <div class="poem-info">
+            <div class="poem-title kai">咏鹅</div>
+            <div class="poem-meta">唐 · 骆宾王 · 一年级上</div>
+            <div class="poem-line kai">曲项向天歌</div>
+          </div>
+          <div class="poem-no mono">诗录<br>No.001</div>
+        </div>
+
+        <div class="poem-card">
+          <div class="poem-thumb">
+            <svg width="56" height="56" viewBox="0 0 56 56">
+              <rect width="56" height="56" fill="#141412"/>
+              <rect x="10" y="12" width="22" height="18" fill="none" stroke="#F0EAD8" stroke-width="1.2" opacity=".8"/>
+              <circle cx="21" cy="21" r="6" fill="#F0EAD8"/>
+              <path d="M0 48 Q16 38 30 45 T56 44 L56 56 L0 56 Z" fill="#2B4F91" opacity=".8"/>
+            </svg>
+          </div>
+          <div class="poem-info">
+            <div class="poem-title kai">静夜思</div>
+            <div class="poem-meta">唐 · 李白 · 一年级下</div>
+            <div class="poem-line kai">疑是地上霜</div>
+          </div>
+          <div class="poem-no mono">诗录<br>No.007</div>
+        </div>
+
+        <div class="poem-card">
+          <div class="poem-thumb">
+            <svg width="56" height="56" viewBox="0 0 56 56">
+              <rect width="56" height="56" fill="#141412"/>
+              <path d="M0 40 Q28 28 56 40 L56 56 L0 56 Z" fill="#2B4F91" opacity=".75"/>
+              <ellipse cx="18" cy="34" rx="7" ry="3" fill="#F0EAD8" opacity=".85"/>
+              <ellipse cx="34" cy="42" rx="8" ry="3.5" fill="#F0EAD8" opacity=".7"/>
+              <ellipse cx="44" cy="30" rx="6" ry="2.5" fill="#F0EAD8" opacity=".8"/>
+            </svg>
+          </div>
+          <div class="poem-info">
+            <div class="poem-title kai">江南</div>
+            <div class="poem-meta">汉乐府 · 一年级上</div>
+            <div class="poem-line kai">莲叶何田田</div>
+          </div>
+          <div class="poem-no mono">诗录<br>No.003</div>
+        </div>
+      </div>
+
+      <div class="tabbar">
+        <div class="tab on">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M3 4 h5 a2 2 0 0 1 2 2 v10 a2 2 0 0 0 -2 -2 H3 Z M17 4 h-5 a2 2 0 0 0 -2 2 v10 a2 2 0 0 1 2 -2 h5 Z" stroke="#F0EAD8" stroke-width="1.2"/></svg>
+          <span>诗集</span>
+        </div>
+        <div class="tab">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="5" cy="15" r="1.6" stroke="#B7B0A0" stroke-width="1.1"/><circle cx="10" cy="8" r="1.6" stroke="#B7B0A0" stroke-width="1.1"/><circle cx="15" cy="12" r="1.6" stroke="#B7B0A0" stroke-width="1.1"/><path d="M5 15 L10 8 L15 12" stroke="#B7B0A0" stroke-width="1" stroke-dasharray="2 2"/></svg>
+          <span>诗径</span>
+        </div>
+        <div class="tab">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="6.5" r="3" stroke="#B7B0A0" stroke-width="1.1"/><path d="M4 16 q6 -6 12 0" stroke="#B7B0A0" stroke-width="1.1"/></svg>
+          <span>诗人</span>
+        </div>
+        <div class="tab">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M4 16 V10 M10 16 V5 M16 16 V8" stroke="#B7B0A0" stroke-width="1.3"/></svg>
+          <span>战报</span>
+        </div>
+      </div>
+      <div class="homebar"></div>
+    </div>
+    <div class="caption mono">01 · 诗集列表 · 星录</div>
+  </div>
+
+  <!-- ============ 屏 2 · 诗详情《山行》 ============ -->
+  <div class="device">
+    <div class="screen">
+      <div class="screen-stars" data-stars="2"></div>
+      <div class="notch"></div>
+      <div class="statusbar"><span class="mono">9:41</span><span class="mono" style="font-size:12px;letter-spacing:2px;">诗画同源</span></div>
+
+      <div class="s2-nav">
+        <span class="back">
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M7.5 2 L3.5 6 L7.5 10" stroke="#F0EAD8" stroke-width="1.3"/></svg>
+        </span>
+        <span class="t kai">诗详情</span>
+        <span class="no mono">诗录 No.061</span>
+      </div>
+
+      <!-- 水墨诗意图位：CSS/SVG 抽象山水示意 -->
+      <div class="painting">
+        <svg width="339" height="234" viewBox="0 0 339 234">
+          <rect width="339" height="234" fill="#0D0D0C"/>
+          <circle cx="268" cy="46" r="20" fill="#F0EAD8"/>
+          <circle cx="262" cy="42" r="20" fill="#0D0D0C" opacity=".22"/>
+          <circle cx="40" cy="30" r="1" fill="#F0EAD8" opacity=".7"/>
+          <circle cx="90" cy="18" r="1" fill="#F0EAD8" opacity=".5"/>
+          <circle cx="150" cy="34" r="1" fill="#F0EAD8" opacity=".6"/>
+          <circle cx="210" cy="20" r="1" fill="#F0EAD8" opacity=".4"/>
+          <circle cx="310" cy="90" r="1" fill="#F0EAD8" opacity=".5"/>
+          <ellipse cx="120" cy="70" rx="34" ry="7" fill="#F0EAD8" opacity=".14"/>
+          <ellipse cx="200" cy="92" rx="44" ry="8" fill="#F0EAD8" opacity=".1"/>
+          <!-- 寒山石径：斜上行径 -->
+          <path d="M0 168 Q60 120 120 128 T250 96 L339 118 L339 234 L0 234 Z" fill="#2B4F91" opacity=".9"/>
+          <path d="M30 190 Q40 160 70 150 T120 132" stroke="#F0EAD8" stroke-width="2" fill="none" opacity=".55" stroke-dasharray="1 6" stroke-linecap="round"/>
+          <path d="M0 200 Q90 168 180 186 T339 176 L339 234 L0 234 Z" fill="#0A0A0A"/>
+          <!-- 枫林：霜叶红 -->
+          <circle cx="66" cy="146" r="4" fill="#A8402F"/>
+          <circle cx="84" cy="138" r="3.4" fill="#A8402F"/>
+          <circle cx="102" cy="134" r="3" fill="#A8402F" opacity=".9"/>
+          <circle cx="52" cy="156" r="2.6" fill="#A8402F" opacity=".85"/>
+          <circle cx="118" cy="128" r="2.2" fill="#A8402F" opacity=".8"/>
+          <!-- 人家 -->
+          <path d="M238 104 l10 -8 l10 8 z" fill="#F0EAD8" opacity=".85"/>
+          <rect x="241" y="104" width="14" height="9" fill="#F0EAD8" opacity=".55"/>
+        </svg>
+        <span class="cap">水墨诗意图 · 远上寒山</span>
+      </div>
+
+      <div class="s2-title-row">
+        <span class="s2-title kai">山行</span>
+        <span class="s2-author">唐 · 杜牧</span>
+        <span class="tag">仄起七绝</span>
+      </div>
+
+      <div class="annot-toggle">
+        <span class="chip">原文</span><span class="chip on">拼音</span><span class="chip">平仄</span>
+      </div>
+
+      <div class="poem-body kai">
+        <div class="pline">
+          <div class="py serif">yuǎn shàng hán shān shí jìng xiá</div>
+          <div class="tx">远上寒山石径斜</div>
+        </div>
+        <div class="pline">
+          <div class="py serif">bái yún shēng chù yǒu rén jiā</div>
+          <div class="tx">白云生处有人家</div>
+        </div>
+        <div class="pline">
+          <div class="py serif">tíng chē zuò ài fēng lín wǎn</div>
+          <div class="tx">停车坐爱枫林晚</div>
+        </div>
+        <div class="pline">
+          <div class="py serif">shuāng yè hóng yú èr yuè huā</div>
+          <div class="tx">霜叶红于二月花</div>
+        </div>
+      </div>
+
+      <div class="tone-strip">
+        <span>平仄谱</span>
+        <b class="mono">仄仄平平平仄平 · 仄平平仄仄平平</b>
+      </div>
+
+      <div class="tools">
+        <div class="tool">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="2" y="2" width="12" height="12" rx="1" stroke="#B7B0A0" stroke-width="1.1"/><circle cx="6" cy="6" r="1.6" stroke="#B7B0A0" stroke-width="1"/><path d="M2 12 l4 -3.5 l3 2.5 l3 -3 l2 2" stroke="#B7B0A0" stroke-width="1"/></svg>
+          <span>诗画卡</span>
+        </div>
+        <div class="tool">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="2" y="2" width="12" height="12" rx="1" stroke="#B7B0A0" stroke-width="1.1"/><path d="M5.5 5.5 h5 M5.5 8 h5 M5.5 10.5 h3" stroke="#B7B0A0" stroke-width="1"/></svg>
+          <span>字帖</span>
+        </div>
+        <div class="tool">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="2" y="2.5" width="12" height="11" rx="1" stroke="#B7B0A0" stroke-width="1.1"/><path d="M2 6 h12 M5.5 2 v2 M10.5 2 v2" stroke="#B7B0A0" stroke-width="1"/></svg>
+          <span>日签</span>
+        </div>
+        <div class="tool">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="2" y="2" width="12" height="12" rx="1" stroke="#B7B0A0" stroke-width="1.1"/><circle cx="6.5" cy="6.5" r="1.5" stroke="#B7B0A0" stroke-width="1"/><circle cx="10" cy="6.5" r="1.2" stroke="#B7B0A0" stroke-width="1"/><path d="M3.5 12 q3 -3 6 0 M9 12 q2.5 -2 4.5 0" stroke="#B7B0A0" stroke-width="1"/></svg>
+          <span>合照卡</span>
+        </div>
+      </div>
+
+      <div class="recite">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="5" y="1.5" width="6" height="9" rx="3" stroke="#F0EAD8" stroke-width="1.2"/><path d="M3 8 a5 5 0 0 0 10 0 M8 13 v2" stroke="#F0EAD8" stroke-width="1.2"/></svg>
+        背诵打卡 · 亲子对背
+      </div>
+
+      <div class="homebar"></div>
+    </div>
+    <div class="caption mono">02 · 诗详情 · 山行</div>
+  </div>
+
+  <!-- ============ 屏 3 · 诗径星图 ============ -->
+  <div class="device">
+    <div class="screen">
+      <div class="screen-stars" data-stars="3"></div>
+      <div class="notch"></div>
+      <div class="statusbar"><span class="mono">9:41</span><span class="mono" style="font-size:12px;letter-spacing:2px;">诗画同源</span></div>
+
+      <div class="s3-head">
+        <div class="s3-title-row">
+          <span class="s3-title kai">诗径</span>
+          <span class="tag">星图</span>
+          <span class="no mono">CHART 130</span>
+        </div>
+        <div class="s3-sub">一百三十首 · 已点亮 <b style="color:#F0EAD8;font-weight:normal;">二十三</b> · 行至山腰</div>
+      </div>
+
+      <div class="starmap">
+        <svg width="339" height="438" viewBox="0 0 339 438">
+          <!-- 轨道参考线 -->
+          <ellipse cx="170" cy="120" rx="150" ry="46" fill="none" stroke="rgba(126,155,214,.28)" stroke-width="1" stroke-dasharray="3 5"/>
+          <ellipse cx="170" cy="300" rx="165" ry="52" fill="none" stroke="rgba(126,155,214,.22)" stroke-width="1" stroke-dasharray="3 5"/>
+          <circle cx="170" cy="210" r="118" fill="none" stroke="rgba(126,155,214,.16)" stroke-width="1"/>
+          <!-- 顶端 summit 标记 -->
+          <circle cx="170" cy="30" r="9" fill="none" stroke="#F0EAD8" stroke-width="1" opacity=".8"/>
+          <circle cx="170" cy="30" r="2.5" fill="#F0EAD8"/>
+          <text x="188" y="34" fill="#B7B0A0" font-size="11" font-family="Consolas,monospace" letter-spacing="1">山顶 · 130</text>
+          <!-- 诗径折线（登山小径 → 星路） -->
+          <path d="M60 412 L110 388 L80 360 L140 336 L118 306 L176 284 L150 252 L208 232 L186 200 L240 182 L214 150 L262 132 L236 102 L268 82 L226 62 L170 34"
+                fill="none" stroke="rgba(126,155,214,.55)" stroke-width="1.2"/>
+          <!-- 已点亮（实星） -->
+          <g fill="#7E9BD6">
+            <circle cx="60" cy="412" r="4"/><circle cx="110" cy="388" r="3.6"/><circle cx="80" cy="360" r="3.8"/>
+            <circle cx="140" cy="336" r="3.4"/><circle cx="118" cy="306" r="3.8"/><circle cx="176" cy="284" r="3.4"/>
+            <circle cx="150" cy="252" r="3.6"/><circle cx="208" cy="232" r="3.4"/>
+          </g>
+          <!-- 已点亮的星光晕 -->
+          <g fill="#F0EAD8" opacity=".85">
+            <circle cx="60" cy="412" r="1.4"/><circle cx="110" cy="388" r="1.2"/><circle cx="80" cy="360" r="1.3"/>
+            <circle cx="140" cy="336" r="1.1"/><circle cx="118" cy="306" r="1.3"/><circle cx="176" cy="284" r="1.1"/>
+            <circle cx="150" cy="252" r="1.2"/><circle cx="208" cy="232" r="1.1"/>
+          </g>
+          <!-- 当前位置：朱砂 -->
+          <circle cx="186" cy="200" r="7" fill="none" stroke="#A8402F" stroke-width="1.4"/>
+          <circle cx="186" cy="200" r="3" fill="#A8402F"/>
+          <text x="200" y="204" fill="#F0EAD8" font-size="11" font-family="Consolas,monospace" letter-spacing="1">当前 · No.023</text>
+          <!-- 未点亮（空心） -->
+          <g fill="none" stroke="rgba(240,234,216,.5)" stroke-width="1">
+            <circle cx="240" cy="182" r="3.2"/><circle cx="214" cy="150" r="3.2"/><circle cx="262" cy="132" r="3.2"/>
+            <circle cx="236" cy="102" r="3.2"/><circle cx="268" cy="82" r="3.2"/><circle cx="226" cy="62" r="3.2"/>
+          </g>
+          <!-- 星座装饰：已背诗连成的小星座 -->
+          <path d="M60 412 L110 388 L80 360 L140 336" fill="none" stroke="rgba(240,234,216,.3)" stroke-width="1"/>
+          <text x="24" y="398" fill="#B7B0A0" font-size="10" font-family="Consolas,monospace" letter-spacing="1">咏鹅座</text>
+          <!-- 散星 -->
+          <g fill="rgba(240,234,216,.5)">
+            <circle cx="30" cy="60" r="1"/><circle cx="300" cy="40" r="1"/><circle cx="320" cy="200" r="1"/>
+            <circle cx="20" cy="240" r="1"/><circle cx="60" cy="120" r="1"/><circle cx="310" cy="330" r="1"/>
+            <circle cx="100" cy="440" r="0" /><circle cx="40" cy="330" r="1"/><circle cx="250" cy="300" r="1"/>
+            <circle cx="290" cy="250" r="1"/><circle cx="120" cy="180" r="1"/>
+          </g>
+        </svg>
+        <div class="legend">
+          <div><i style="background:#7E9BD6;"></i>已点亮</div>
+          <div><i style="border:1px solid rgba(240,234,216,.6);background:transparent;"></i>未点亮</div>
+          <div><i style="background:#A8402F;"></i>当前位置</div>
+        </div>
+      </div>
+
+      <!-- 每周战报 -->
+      <div class="report">
+        <div class="rt"><span class="kai">每周战报</span><span class="no mono">WEEK 37</span></div>
+        <div class="row">
+          <div class="cell"><div class="num serif">5</div><div class="lab">本周背诗</div></div>
+          <div class="cell"><div class="num serif">6</div><div class="lab">连续打卡 · 天</div></div>
+          <div class="cell"><div class="rank kai">秀才</div><div class="lab">当前称号</div></div>
+        </div>
+      </div>
+
+      <div class="tabbar" style="height:56px;">
+        <div class="tab">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M3 4 h5 a2 2 0 0 1 2 2 v10 a2 2 0 0 0 -2 -2 H3 Z M17 4 h-5 a2 2 0 0 0 -2 2 v10 a2 2 0 0 1 2 -2 h5 Z" stroke="#B7B0A0" stroke-width="1.2"/></svg>
+          <span>诗集</span>
+        </div>
+        <div class="tab on">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="5" cy="15" r="1.6" stroke="#F0EAD8" stroke-width="1.1"/><circle cx="10" cy="8" r="1.6" stroke="#F0EAD8" stroke-width="1.1"/><circle cx="15" cy="12" r="1.6" stroke="#F0EAD8" stroke-width="1.1"/><path d="M5 15 L10 8 L15 12" stroke="#F0EAD8" stroke-width="1" stroke-dasharray="2 2"/></svg>
+          <span>诗径</span>
+        </div>
+        <div class="tab">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="6.5" r="3" stroke="#B7B0A0" stroke-width="1.1"/><path d="M4 16 q6 -6 12 0" stroke="#B7B0A0" stroke-width="1.1"/></svg>
+          <span>诗人</span>
+        </div>
+        <div class="tab">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M4 16 V10 M10 16 V5 M16 16 V8" stroke="#B7B0A0" stroke-width="1.3"/></svg>
+          <span>战报</span>
+        </div>
+      </div>
+      <div class="homebar"></div>
+    </div>
+    <div class="caption mono">03 · 诗径地图 · 星图</div>
+  </div>
+
+</div>
+
+<script>
+// 画布与屏内的散星：确定性伪随机，避免每次刷新走位
+(function(){
+  function seed(n){return function(){n=(n*9301+49297)%233280;return n/233280;};}
+  var bg=document.getElementById('canvasStars'),r=seed(42),h='';
+  for(var i=0;i<90;i++){
+    h+='<i style="left:'+(r()*1440).toFixed(0)+'px;top:'+(r()*900).toFixed(0)+'px;opacity:'+(0.2+r()*0.5).toFixed(2)+'"></i>';
+  }
+  bg.innerHTML=h;
+  var zones=document.querySelectorAll('.screen-stars');
+  for(var z=0;z<zones.length;z++){
+    var rr=seed(100+z*17),hh='';
+    for(var j=0;j<26;j++){
+      hh+='<i style="left:'+(rr()*375).toFixed(0)+'px;top:'+(rr()*812).toFixed(0)+'px;opacity:'+(0.15+rr()*0.4).toFixed(2)+'"></i>';
+    }
+    zones[z].innerHTML=hh;
+  }
+})();
+</script>
+</body>
+</html>

@@ -393,20 +393,61 @@
 
   /* ---------- 列表页 ---------- */
 
+  /* 诗卡片水墨缩略图：懒渲染 + dataURL 缓存（筛选重排时零成本复用）
+   * IntersectionObserver 在 Chrome 51+ 可用；更老环境回退为直接渲染 */
+  var thumbCache = {};
+  var thumbObserver = null;
+  if ('IntersectionObserver' in window) {
+    thumbObserver = new IntersectionObserver(function (entries) {
+      entries.forEach(function (en) {
+        if (!en.isIntersecting) return;
+        thumbObserver.unobserve(en.target);
+        renderThumb(en.target);
+      });
+    }, { rootMargin: '240px' });
+  }
+  function renderThumb(cv) {
+    var p = cv._poem;
+    if (!p || !window.PoemScene) return;
+    window.PoemScene.render(cv, p, {});
+    try { thumbCache[p.id] = cv.toDataURL('image/png'); } catch (e) {}
+  }
+  function poemThumb(p) {
+    var box = el('div', 'pc-thumb');
+    if (thumbCache[p.id]) {
+      var img = document.createElement('img');
+      img.src = thumbCache[p.id];
+      img.alt = '';
+      box.appendChild(img);
+      return box;
+    }
+    var cv = document.createElement('canvas');
+    cv.width = 144;
+    cv.height = 176;
+    cv._poem = p;
+    box.appendChild(cv);
+    if (thumbObserver) thumbObserver.observe(cv);
+    else renderThumb(cv);
+    return box;
+  }
+
   function poemCard(p) {
     var card = el('div', 'poem-card');
+    card.appendChild(poemThumb(p));
+    var body = el('div', 'pc-body');
     var head = el('div', 'pc-head');
     head.appendChild(el('span', 'pc-title', p.t));
     head.appendChild(el('span', 'pc-meta', '【' + p.d + '】' + p.a));
-    card.appendChild(head);
-    card.appendChild(el('div', 'pc-line', p.l[0].replace(/[，。！？；、：…]$/, '')));
+    body.appendChild(head);
+    body.appendChild(el('div', 'pc-line', p.l[0].replace(/[，。！？；、：…]$/, '')));
     var foot = el('div', 'pc-foot');
     foot.appendChild(el('span', 'pc-grade', p.g + '年级' + (p.s || '')));
     var prog = store.get(p.id);
     if (prog.recited) foot.appendChild(el('span', 'pc-done', '已背诵 ✓'));
     else if (prog.read) foot.appendChild(el('span', 'pc-done', '已读'));
     if (p.tg.length) foot.appendChild(el('span', 'pc-tags', p.tg.slice(0, 2).join(' · ')));
-    card.appendChild(foot);
+    body.appendChild(foot);
+    card.appendChild(body);
     card.addEventListener('click', function () {
       saveScroll(navKey());
       location.hash = '#/poem/' + p.id;
@@ -436,10 +477,12 @@
     });
   }
 
-  /* 列表页头部：标题区 + 卡片工坊 + 常驻复习入口 */
+  /* 列表页头部：标题区（品牌 + 一方小印）+ 卡片工坊 + 常驻复习入口 */
   function listHeader(wrap, activeNav) {
     var bar = el('div', 'topbar');
-    bar.appendChild(el('div', 'brand', '诗画同源'));
+    var brand = el('div', 'brand', '诗画同源');
+    brand.appendChild(el('span', 'brand-seal', '诗'));
+    bar.appendChild(brand);
     bar.appendChild(el('div', 'sub', '小学必背古诗词 · 一诗一画'));
     wrap.appendChild(bar);
     wrap.appendChild(navBar(activeNav));
@@ -504,8 +547,7 @@
     }
     var grades = [['全部', 0], ['一', 1], ['二', 2], ['三', 3], ['四', 4], ['五', 5], ['六', 6]];
     grades.forEach(function (gv) {
-      var c = el('span', 'chip' + (state.grade === gv[1] ? ' active' : ''),
-        gv[1] ? gv[0] + '年级' : gv[0]);
+      var c = el('span', 'chip' + (state.grade === gv[1] ? ' active' : ''), gv[0]);
       c.addEventListener('click', function () {
         state.grade = gv[1];
         renderList();
@@ -597,17 +639,19 @@
 
     AUTHORS.forEach(function (a) {
       var row = el('div', 'poem-card');
+      var body = el('div', 'pc-body');
       var head = el('div', 'pc-head');
       head.appendChild(el('span', 'pc-title', a.n));
       var meta = '【' + a.d + '】';
       if (a.ti) meta += ' ' + a.ti;
       if (a.ly) meta += ' ' + a.ly;
       head.appendChild(el('span', 'pc-meta', meta));
-      row.appendChild(head);
-      row.appendChild(el('div', 'pc-line', a.br));
+      body.appendChild(head);
+      body.appendChild(el('div', 'pc-line', a.br));
       var foot = el('div', 'pc-foot');
       foot.appendChild(el('span', 'pc-grade', '入选 ' + a.ids.length + ' 首'));
-      row.appendChild(foot);
+      body.appendChild(foot);
+      row.appendChild(body);
       row.addEventListener('click', function () {
         saveScroll(navKey());
         location.hash = '#/author/' + encodeURIComponent(a.n);
@@ -691,17 +735,19 @@
     Object.keys(GAME_META).forEach(function (key) {
       var m = GAME_META[key];
       var card = el('div', 'poem-card practice-card');
+      var body = el('div', 'pc-body');
       var head = el('div', 'practice-head');
       head.appendChild(el('div', 'pc-title', m[0]));
       head.appendChild(el('span', 'practice-arrow', '开始 ›'));
-      card.appendChild(head);
+      body.appendChild(head);
       var bestN = bestGet(key);
-      card.appendChild(el('div', 'pc-line', m[1]));
+      body.appendChild(el('div', 'pc-line', m[1]));
       var foot = el('div', 'pc-foot practice-foot');
       foot.appendChild(el('span', 'pc-grade', bestN > 0
         ? (m[4] ? '最佳 ' + bestN + ' / ' + m[4] : '最佳 ' + bestN + ' ' + m[3])
         : '尚未挑战'));
-      card.appendChild(foot);
+      body.appendChild(foot);
+      card.appendChild(body);
       card.addEventListener('click', function () {
         saveScroll(navKey());
         location.hash = m[2];

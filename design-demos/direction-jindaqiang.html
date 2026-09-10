@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>诗画同源 · 靳埭强方向 — 水墨的现代性</title>
+<style>
+  /* ===== 基础 ===== */
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html,body { width:1440px; height:900px; }
+  body {
+    background:#e7dfcd;
+    font-family:-apple-system,"PingFang SC","Microsoft YaHei","Helvetica Neue",sans-serif;
+    color:#22262a;
+    position:relative;
+    overflow:hidden;
+  }
+  .kaiti { font-family:"KaiTi","STKaiti","Kaiti SC","BiauKai","DFKai-SB",serif; }
+
+  /* 画布背景：一笔未干的飞白，计白当黑 */
+  .bg-stroke { position:absolute; left:-120px; top:260px; opacity:.10; pointer-events:none; }
+
+  .caption {
+    position:absolute; left:0; right:0; bottom:14px;
+    text-align:center; font-size:10px; letter-spacing:4px; color:#8a8272;
+  }
+
+  /* ===== 三台设备 ===== */
+  .stage {
+    position:absolute; left:0; top:0; width:1440px; height:900px;
+    display:flex; justify-content:center; align-items:flex-start;
+  }
+  .device-col { display:flex; flex-direction:column; align-items:center; margin:0 30px; }
+  .device-label {
+    margin-top:16px; margin-bottom:10px;
+    font-size:12px; letter-spacing:6px; color:#6d6656;
+  }
+  .phone {
+    width:375px; height:812px; border-radius:34px;
+    background:#f7f2e6;
+    border:7px solid #20242a;
+    box-shadow:0 18px 40px rgba(40,36,26,.28);
+    overflow:hidden; position:relative;
+    display:flex; flex-direction:column;
+  }
+
+  /* 状态栏 */
+  .statusbar {
+    height:30px; flex:none;
+    display:flex; justify-content:space-between; align-items:center;
+    padding:0 22px;
+    font-size:12px; color:#22262a;
+  }
+  .statusbar svg { display:block; }
+
+  /* ===== 印章（点）===== */
+  .seal {
+    background:#b03422; color:#fdfaf2;
+    display:flex; align-items:center; justify-content:center;
+    font-family:"KaiTi","STKaiti","Kaiti SC",serif;
+    border-radius:3px;
+    box-shadow:inset 0 0 0 1.5px rgba(253,250,242,.55), inset 0 0 6px rgba(0,0,0,.18);
+  }
+
+  /* ===== 屏一：诗集列表 ===== */
+  .p1-head { padding:14px 26px 0; }
+  .p1-title-row { display:flex; align-items:flex-end; justify-content:space-between; }
+  .p1-title { font-size:30px; letter-spacing:6px; }
+  .p1-title-row .seal { width:36px; height:36px; font-size:21px; margin-bottom:2px; }
+  .p1-sub {
+    margin-top:10px; font-size:12px; letter-spacing:3px; color:#5a5f63;
+    padding-bottom:14px; border-bottom:2px solid #22262a; /* 一画：通栏墨线 */
+  }
+
+  .p1-search {
+    margin:16px 26px 0; display:flex; align-items:center;
+    padding-bottom:8px; border-bottom:1px solid rgba(34,38,42,.35);
+  }
+  .p1-search svg { flex:none; margin-right:9px; }
+  .p1-search span { font-size:14px; color:#6d6656; letter-spacing:1px; }
+
+  .p1-grade-label { margin:18px 26px 8px; font-size:12px; letter-spacing:4px; color:#5a5f63; }
+  .p1-grades { display:flex; padding:0 26px; }
+  .p1-grade {
+    width:34px; height:34px; margin-right:9px; flex:none;
+    display:flex; align-items:center; justify-content:center;
+    font-size:15px; color:#22262a;
+    border:1px solid rgba(34,38,42,.5); border-radius:2px;
+    background:transparent;
+  }
+  .p1-grade.on {
+    background:#22262a; color:#f7f2e6; border-color:#22262a;
+  }
+
+  .p1-count { margin:16px 26px 10px; font-size:12px; color:#5a5f63; letter-spacing:2px; }
+  .p1-count b { font-size:13px; color:#22262a; }
+
+  .p1-list { padding:0 22px; }
+  .leaf {
+    background:#fdfbf4;
+    border:1px solid #e3dac6;
+    border-radius:4px;
+    padding:13px 14px 12px 16px;
+    margin-bottom:12px;
+    display:flex; align-items:center;
+    box-shadow:0 1px 0 rgba(60,52,36,.06);
+  }
+  .leaf-main { flex:1; min-width:0; }
+  .leaf-top { display:flex; align-items:center; }
+  .leaf-title { font-size:19px; letter-spacing:2px; }
+  .leaf-author { font-size:12px; color:#5a5f63; margin-left:10px; letter-spacing:1px; }
+  .leaf-done {
+    width:24px; height:24px; font-size:11px; line-height:1;
+    border-radius:50%; margin-left:9px; flex:none;
+  }
+  .leaf-line { margin-top:7px; font-size:14px; color:#454a4f; letter-spacing:1px; }
+  .leaf-swatch {
+    width:58px; height:58px; flex:none; margin-left:14px;
+    border:1px solid #d8cfb8; border-radius:2px;
+    background:#f0ead9;
+    position:relative; overflow:hidden;
+  }
+  .leaf-swatch svg { display:block; width:100%; height:100%; }
+
+  .p1-entries { margin:2px 26px 0; border-top:2px solid #22262a; }
+  .p1-entry {
+    display:flex; align-items:center; justify-content:space-between;
+    padding:13px 2px;
+    border-bottom:1px solid rgba(34,38,42,.25);
+  }
+  .p1-entry span { font-size:14px; letter-spacing:3px; color:#22262a; }
+  .p1-entry svg { flex:none; }
+
+  /* ===== 屏二：山行详情 ===== */
+  .p2-nav {
+    height:38px; flex:none; display:flex; align-items:center;
+    padding:0 18px;
+  }
+  .p2-nav svg { flex:none; }
+  .p2-nav span { font-size:14px; color:#22262a; margin-left:6px; letter-spacing:2px; }
+
+  .p2-painting {
+    margin:6px 20px 0; height:264px; flex:none;
+    border-radius:3px; overflow:hidden; position:relative;
+    background:#efe9da; border:1px solid #ddd3bc;
+  }
+  .p2-painting svg.art { display:block; width:100%; height:100%; }
+  .p2-painting .seal {
+    position:absolute; right:12px; bottom:12px;
+    width:26px; height:26px; font-size:12px; line-height:1.05; padding:2px;
+    flex-direction:column;
+  }
+
+  .p2-title-row {
+    display:flex; align-items:baseline; padding:16px 26px 0;
+  }
+  .p2-title { font-size:28px; letter-spacing:4px; }
+  .p2-author { font-size:13px; color:#5a5f63; margin-left:12px; letter-spacing:2px; }
+
+  .p2-tools {
+    display:flex; padding:12px 26px 0; align-items:center;
+  }
+  .p2-tool {
+    font-size:14px; color:#5a5f63; margin-right:22px; padding-bottom:5px;
+    letter-spacing:2px;
+  }
+  .p2-tool.on {
+    color:#22262a; font-weight:600;
+    border-bottom:3px solid #b03422; /* 朱砂一捺 */
+    padding-bottom:2px;
+  }
+
+  .p2-poem { padding:14px 26px 0; }
+  .pline { display:flex; margin-bottom:12px; }
+  .pc {
+    flex:1; display:flex; flex-direction:column; align-items:center;
+  }
+  .pc i {
+    font-style:normal; font-size:12px; color:#5a5f63;
+    font-family:-apple-system,"PingFang SC","Helvetica Neue",sans-serif;
+    margin-bottom:3px;
+  }
+  .pc b { font-weight:400; font-size:23px; font-family:"KaiTi","STKaiti","Kaiti SC","BiauKai",serif; color:#22262a; }
+  .pc.punct { flex:0 0 14px; justify-content:flex-end; }
+  .pc.punct b { font-size:23px; color:#6d6656; }
+
+  .p2-cta { margin-top:auto; padding:0 26px 24px; }
+  .p2-gen { display:flex; justify-content:center; margin-bottom:14px; }
+  .p2-gen span {
+    font-size:12px; color:#5a5f63; letter-spacing:2px;
+    border:1px solid rgba(34,38,42,.4); border-radius:2px;
+    padding:5px 12px; margin:0 6px;
+  }
+  .p2-btn {
+    height:52px; border-radius:3px;
+    background:#b03422; color:#fdfaf2;
+    display:flex; align-items:center; justify-content:center;
+    font-size:19px; letter-spacing:8px; padding-left:8px;
+    box-shadow:0 4px 0 #7e2417; /* 印泥按下去的厚度 */
+  }
+  .p2-sub-cta {
+    margin-top:12px; text-align:center;
+    font-size:12px; color:#5a5f63; letter-spacing:2px;
+  }
+
+  /* ===== 屏三：诗径 ===== */
+  .p3-head { padding:12px 26px 0; }
+  .p3-title-row { display:flex; align-items:flex-end; justify-content:space-between; }
+  .p3-title { font-size:26px; letter-spacing:6px; }
+  .p3-sub { margin-top:8px; font-size:12px; letter-spacing:3px; color:#5a5f63; }
+
+  .p3-stats {
+    margin:14px 20px 0; padding:12px 16px;
+    background:#fdfbf4; border:1px solid #e3dac6; border-radius:4px;
+    display:flex; align-items:center;
+  }
+  .p3-stat { flex:1; }
+  .p3-stat .num { font-size:20px; font-family:"KaiTi","STKaiti",serif; }
+  .p3-stat .num small { font-size:12px; color:#5a5f63; }
+  .p3-stat .lbl { font-size:12px; color:#5a5f63; margin-top:2px; letter-spacing:2px; }
+  .p3-stat + .p3-stat { border-left:1px solid #e3dac6; padding-left:16px; }
+  .p3-stats .seal { width:44px; height:44px; font-size:16px; flex-direction:column; line-height:1.15; margin-left:12px; }
+
+  .p3-map { flex:1; position:relative; margin:8px 14px 0; }
+  .p3-map svg { display:block; width:100%; height:100%; }
+  .node-lbl {
+    position:absolute; font-size:12px; color:#454a4f; letter-spacing:1px;
+    background:rgba(247,242,230,.85); padding:1px 5px; border-radius:2px;
+    white-space:nowrap;
+  }
+  .node-lbl.now { color:#b03422; font-weight:600; }
+  .node-lbl.dim { color:#6d6656; }
+
+  .p3-foot { padding:6px 26px 22px; }
+  .p3-week {
+    font-size:13px; color:#22262a; letter-spacing:1px; text-align:center;
+  }
+  .p3-week b { font-family:"KaiTi","STKaiti",serif; }
+  .p3-next {
+    margin-top:8px; font-size:12px; color:#5a5f63; text-align:center; letter-spacing:2px;
+    padding-top:10px; border-top:1px solid rgba(34,38,42,.25);
+  }
+</style>
+</head>
+<body>
+
+<!-- 背景一笔：飞白 -->
+<svg class="bg-stroke" width="1700" height="520" viewBox="0 0 1700 520">
+  <path d="M-20 300 C 300 180, 700 420, 1050 300 C 1300 220, 1550 260, 1720 200"
+        fill="none" stroke="#22262a" stroke-width="90" stroke-linecap="round"
+        filter="url(#roughBg)"/>
+  <defs>
+    <filter id="roughBg" x="-20%" y="-60%" width="140%" height="220%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.012 0.09" numOctaves="3" result="n"/>
+      <feDisplacementMap in="SourceGraphic" in2="n" scale="34"/>
+    </filter>
+  </defs>
+</svg>
+
+<div class="stage">
+
+  <!-- ================= 屏一：诗集列表 ================= -->
+  <div class="device-col">
+    <div class="device-label">壹 · 诗 集</div>
+    <div class="phone">
+      <div class="statusbar">
+        <span>21:12</span>
+        <svg width="52" height="12" viewBox="0 0 52 12">
+          <rect x="0" y="7" width="3" height="5" fill="#22262a"/>
+          <rect x="5" y="5" width="3" height="7" fill="#22262a"/>
+          <rect x="10" y="3" width="3" height="9" fill="#22262a"/>
+          <rect x="15" y="1" width="3" height="11" fill="#22262a"/>
+          <rect x="26" y="1" width="22" height="10" rx="2" fill="none" stroke="#22262a"/>
+          <rect x="28" y="3" width="14" height="6" fill="#22262a"/>
+          <rect x="49" y="4" width="2" height="4" fill="#22262a"/>
+        </svg>
+      </div>
+
+      <div class="p1-head">
+        <div class="p1-title-row">
+          <div class="p1-title kaiti">诗画同源</div>
+          <div class="seal">诗</div>
+        </div>
+        <div class="p1-sub">课内必背 · 一百三十首 · 每首一幅水墨</div>
+      </div>
+
+      <div class="p1-search">
+        <svg width="16" height="16" viewBox="0 0 16 16">
+          <circle cx="7" cy="7" r="5.2" fill="none" stroke="#5a5f63" stroke-width="1.6"/>
+          <line x1="11.2" y1="11.2" x2="15" y2="15" stroke="#5a5f63" stroke-width="1.8" stroke-linecap="round"/>
+        </svg>
+        <span>搜诗名 · 作者 · 诗句</span>
+      </div>
+
+      <div class="p1-grade-label">年 级</div>
+      <div class="p1-grades">
+        <div class="p1-grade on">全</div>
+        <div class="p1-grade">一</div>
+        <div class="p1-grade">二</div>
+        <div class="p1-grade">三</div>
+        <div class="p1-grade">四</div>
+        <div class="p1-grade">五</div>
+        <div class="p1-grade">六</div>
+      </div>
+
+      <div class="p1-count">三年级 · 上册　<b>已背 12 / 21</b></div>
+
+      <div class="p1-list">
+
+        <div class="leaf">
+          <div class="leaf-main">
+            <div class="leaf-top">
+              <span class="leaf-title kaiti">山行</span>
+              <span class="leaf-author">唐 · 杜牧</span>
+              <span class="seal leaf-done">已<br>背</span>
+            </div>
+            <div class="leaf-line kaiti">霜叶红于二月花</div>
+          </div>
+          <div class="leaf-swatch">
+            <svg viewBox="0 0 58 58">
+              <rect width="58" height="58" fill="#f0ead9"/>
+              <path d="M0 44 Q14 26 28 38 T58 30 V58 H0 Z" fill="#7b8794" opacity=".5"/>
+              <path d="M0 50 Q18 36 34 46 T58 42 V58 H0 Z" fill="#3a4249" opacity=".65"/>
+              <circle cx="44" cy="14" r="5" fill="#b03422" opacity=".85"/>
+              <circle cx="14" cy="34" r="2" fill="#c0452e"/><circle cx="20" cy="31" r="1.5" fill="#c0452e"/>
+            </svg>
+          </div>
+        </div>
+
+        <div class="leaf">
+          <div class="leaf-main">
+            <div class="leaf-top">
+              <span class="leaf-title kaiti">静夜思</span>
+              <span class="leaf-author">唐 · 李白</span>
+            </div>
+            <div class="leaf-line kaiti">床前明月光，疑是地上霜</div>
+          </div>
+          <div class="leaf-swatch">
+            <svg viewBox="0 0 58 58">
+              <rect width="58" height="58" fill="#f0ead9"/>
+              <circle cx="40" cy="16" r="8" fill="#d9d2bd"/>
+              <circle cx="40" cy="16" r="5.5" fill="#efe9da"/>
+              <path d="M0 48 Q20 40 58 46 V58 H0 Z" fill="#3a4249" opacity=".55"/>
+            </svg>
+          </div>
+        </div>
+
+        <div class="leaf">
+          <div class="leaf-main">
+            <div class="leaf-top">
+              <span class="leaf-title kaiti">咏鹅</span>
+              <span class="leaf-author">唐 · 骆宾王</span>
+              <span class="seal leaf-done">已<br>背</span>
+            </div>
+            <div class="leaf-line kaiti">鹅，鹅，鹅，曲项向天歌</div>
+          </div>
+          <div class="leaf-swatch">
+            <svg viewBox="0 0 58 58">
+              <rect width="58" height="58" fill="#f0ead9"/>
+              <path d="M0 40 Q29 34 58 40 V58 H0 Z" fill="#7b8794" opacity=".45"/>
+              <path d="M20 34 q3 -10 10 -12 q8 -2 6 4 q-1 4 -6 5 l-2 8 q-8 2 -8 -5" fill="#fdfbf4" stroke="#3a4249" stroke-width="1.2"/>
+              <circle cx="33" cy="22" r="1.2" fill="#22262a"/>
+            </svg>
+          </div>
+        </div>
+
+        <div class="leaf">
+          <div class="leaf-main">
+            <div class="leaf-top">
+              <span class="leaf-title kaiti">江南</span>
+              <span class="leaf-author">汉乐府</span>
+            </div>
+            <div class="leaf-line kaiti">江南可采莲，莲叶何田田</div>
+          </div>
+          <div class="leaf-swatch">
+            <svg viewBox="0 0 58 58">
+              <rect width="58" height="58" fill="#f0ead9"/>
+              <path d="M0 42 Q29 36 58 42 V58 H0 Z" fill="#7b8794" opacity=".4"/>
+              <ellipse cx="20" cy="34" rx="8" ry="3.5" fill="#4a5560" opacity=".6"/>
+              <ellipse cx="36" cy="40" rx="9" ry="4" fill="#4a5560" opacity=".5"/>
+              <circle cx="30" cy="28" r="2.5" fill="#b03422" opacity=".7"/>
+            </svg>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="p1-entries">
+        <div class="p1-entry">
+          <span class="kaiti">练习中心 · 七个游戏</span>
+          <svg width="9" height="14" viewBox="0 0 9 14"><polyline points="1.5,1.5 7,7 1.5,12.5" fill="none" stroke="#5a5f63" stroke-width="1.8" stroke-linecap="round"/></svg>
+        </div>
+        <div class="p1-entry">
+          <span class="kaiti">诗人小传 · 六十五位</span>
+          <svg width="9" height="14" viewBox="0 0 9 14"><polyline points="1.5,1.5 7,7 1.5,12.5" fill="none" stroke="#5a5f63" stroke-width="1.8" stroke-linecap="round"/></svg>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= 屏二：山行 ================= -->
+  <div class="device-col">
+    <div class="device-label">贰 · 山 行</div>
+    <div class="phone">
+      <div class="statusbar">
+        <span>21:12</span>
+        <svg width="52" height="12" viewBox="0 0 52 12">
+          <rect x="0" y="7" width="3" height="5" fill="#22262a"/>
+          <rect x="5" y="5" width="3" height="7" fill="#22262a"/>
+          <rect x="10" y="3" width="3" height="9" fill="#22262a"/>
+          <rect x="15" y="1" width="3" height="11" fill="#22262a"/>
+          <rect x="26" y="1" width="22" height="10" rx="2" fill="none" stroke="#22262a"/>
+          <rect x="28" y="3" width="14" height="6" fill="#22262a"/>
+          <rect x="49" y="4" width="2" height="4" fill="#22262a"/>
+        </svg>
+      </div>
+
+      <div class="p2-nav">
+        <svg width="12" height="20" viewBox="0 0 12 20">
+          <polyline points="10,2 3,10 10,18" fill="none" stroke="#22262a" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+        <span>诗集 · 三年级</span>
+      </div>
+
+      <div class="p2-painting">
+        <svg class="art" viewBox="0 0 335 264" preserveAspectRatio="xMidYMid slice">
+          <defs>
+            <filter id="inkRough" x="-10%" y="-10%" width="120%" height="120%">
+              <feTurbulence type="fractalNoise" baseFrequency="0.02 0.05" numOctaves="3" result="n"/>
+              <feDisplacementMap in="SourceGraphic" in2="n" scale="7"/>
+            </filter>
+            <linearGradient id="skyG" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color="#f2ecdd"/><stop offset="1" stop-color="#e9e2cf"/>
+            </linearGradient>
+          </defs>
+          <rect width="335" height="264" fill="url(#skyG)"/>
+          <!-- 远山：淡墨 -->
+          <path d="M-10 150 Q60 78 130 120 Q190 152 240 108 Q300 70 345 120 V264 H-10 Z"
+                fill="#9aa5b0" opacity=".38" filter="url(#inkRough)"/>
+          <!-- 寒山：中墨 -->
+          <path d="M-10 190 Q70 120 150 160 Q230 196 345 150 V264 H-10 Z"
+                fill="#5d6a76" opacity=".55" filter="url(#inkRough)"/>
+          <!-- 石径：一笔上行 -->
+          <path d="M96 264 C 110 220, 150 200, 168 168 C 182 144, 178 128, 190 116"
+                fill="none" stroke="#f0ead9" stroke-width="9" stroke-linecap="round" opacity=".9"/>
+          <!-- 近岭：焦墨 -->
+          <path d="M180 264 Q250 190 345 210 V264 Z" fill="#2f363d" opacity=".8" filter="url(#inkRough)"/>
+          <!-- 枫林：朱砂点染 -->
+          <g filter="url(#inkRough)">
+            <circle cx="250" cy="196" r="9" fill="#b03422" opacity=".85"/>
+            <circle cx="272" cy="186" r="7" fill="#c0452e" opacity=".8"/>
+            <circle cx="236" cy="184" r="6" fill="#b03422" opacity=".7"/>
+            <circle cx="288" cy="200" r="8" fill="#a02c1c" opacity=".75"/>
+            <circle cx="262" cy="208" r="5" fill="#c0452e" opacity=".7"/>
+            <circle cx="300" cy="188" r="5" fill="#b03422" opacity=".6"/>
+          </g>
+          <!-- 白云生处有人家 -->
+          <g opacity=".92">
+            <ellipse cx="150" cy="98" rx="34" ry="9" fill="#f7f2e6" opacity=".85"/>
+            <ellipse cx="196" cy="86" rx="26" ry="7" fill="#f7f2e6" opacity=".7"/>
+            <rect x="146" y="106" width="16" height="10" fill="#fbf7ec" stroke="#3a4249" stroke-width="1"/>
+            <path d="M143 107 L154 99 L165 107 Z" fill="#3a4249"/>
+          </g>
+          <!-- 落日 -->
+          <circle cx="70" cy="56" r="17" fill="#c0452e" opacity=".8"/>
+        </svg>
+        <div class="seal">杜<br>牧</div>
+      </div>
+
+      <div class="p2-title-row">
+        <div class="p2-title kaiti">山行</div>
+        <div class="p2-author">唐 · 杜牧</div>
+      </div>
+
+      <div class="p2-tools">
+        <span class="p2-tool on">拼音</span>
+        <span class="p2-tool">平仄</span>
+        <span class="p2-tool">注释</span>
+        <span class="p2-tool">译文</span>
+      </div>
+
+      <div class="p2-poem">
+        <div class="pline">
+          <span class="pc"><i>yuǎn</i><b>远</b></span><span class="pc"><i>shàng</i><b>上</b></span><span class="pc"><i>hán</i><b>寒</b></span><span class="pc"><i>shān</i><b>山</b></span><span class="pc"><i>shí</i><b>石</b></span><span class="pc"><i>jìng</i><b>径</b></span><span class="pc"><i>xié</i><b>斜</b></span><span class="pc punct"><b>，</b></span>
+        </div>
+        <div class="pline">
+          <span class="pc"><i>bái</i><b>白</b></span><span class="pc"><i>yún</i><b>云</b></span><span class="pc"><i>shēng</i><b>生</b></span><span class="pc"><i>chù</i><b>处</b></span><span class="pc"><i>yǒu</i><b>有</b></span><span class="pc"><i>rén</i><b>人</b></span><span class="pc"><i>jiā</i><b>家</b></span><span class="pc punct"><b>。</b></span>
+        </div>
+        <div class="pline">
+          <span class="pc"><i>tíng</i><b>停</b></span><span class="pc"><i>chē</i><b>车</b></span><span class="pc"><i>zuò</i><b>坐</b></span><span class="pc"><i>ài</i><b>爱</b></span><span class="pc"><i>fēng</i><b>枫</b></span><span class="pc"><i>lín</i><b>林</b></span><span class="pc"><i>wǎn</i><b>晚</b></span><span class="pc punct"><b>，</b></span>
+        </div>
+        <div class="pline">
+          <span class="pc"><i>shuāng</i><b>霜</b></span><span class="pc"><i>yè</i><b>叶</b></span><span class="pc"><i>hóng</i><b>红</b></span><span class="pc"><i>yú</i><b>于</b></span><span class="pc"><i>èr</i><b>二</b></span><span class="pc"><i>yuè</i><b>月</b></span><span class="pc"><i>huā</i><b>花</b></span><span class="pc punct"><b>。</b></span>
+        </div>
+      </div>
+
+      <div class="p2-cta">
+        <div class="p2-gen">
+          <span>诗画卡</span><span>字帖</span><span>日签</span>
+        </div>
+        <div class="p2-btn kaiti">开始背诵</div>
+        <div class="p2-sub-cta">亲子对背 · 已连续打卡 7 天</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= 屏三：诗径 ================= -->
+  <div class="device-col">
+    <div class="device-label">叁 · 诗 径</div>
+    <div class="phone">
+      <div class="statusbar">
+        <span>21:12</span>
+        <svg width="52" height="12" viewBox="0 0 52 12">
+          <rect x="0" y="7" width="3" height="5" fill="#22262a"/>
+          <rect x="5" y="5" width="3" height="7" fill="#22262a"/>
+          <rect x="10" y="3" width="3" height="9" fill="#22262a"/>
+          <rect x="15" y="1" width="3" height="11" fill="#22262a"/>
+          <rect x="26" y="1" width="22" height="10" rx="2" fill="none" stroke="#22262a"/>
+          <rect x="28" y="3" width="14" height="6" fill="#22262a"/>
+          <rect x="49" y="4" width="2" height="4" fill="#22262a"/>
+        </svg>
+      </div>
+
+      <div class="p3-head">
+        <div class="p3-title-row">
+          <div class="p3-title kaiti">诗径</div>
+          <div class="seal" style="width:32px;height:32px;font-size:13px;line-height:1.1;">秀<br>才</div>
+        </div>
+        <div class="p3-sub">背一首，点亮一处 · 一百三十首登山路</div>
+      </div>
+
+      <div class="p3-stats">
+        <div class="p3-stat">
+          <div class="num kaiti">42<small> / 130</small></div>
+          <div class="lbl">已点亮</div>
+        </div>
+        <div class="p3-stat">
+          <div class="num kaiti">7<small> 天</small></div>
+          <div class="lbl">连续打卡</div>
+        </div>
+        <div class="p3-stat">
+          <div class="num kaiti">5<small> 首</small></div>
+          <div class="lbl">本周背诗</div>
+        </div>
+      </div>
+
+      <div class="p3-map">
+        <svg viewBox="0 0 347 470" preserveAspectRatio="xMidYMid meet">
+          <defs>
+            <filter id="pathRough" x="-10%" y="-10%" width="120%" height="120%">
+              <feTurbulence type="fractalNoise" baseFrequency="0.03 0.06" numOctaves="2" result="n"/>
+              <feDisplacementMap in="SourceGraphic" in2="n" scale="5"/>
+            </filter>
+          </defs>
+          <!-- 远峰淡影 -->
+          <path d="M-10 90 Q70 20 150 60 Q240 100 357 40 V0 H-10 Z" fill="#9aa5b0" opacity=".18"/>
+          <ellipse cx="60" cy="70" rx="30" ry="8" fill="#9aa5b0" opacity=".2"/>
+          <ellipse cx="290" cy="120" rx="26" ry="7" fill="#9aa5b0" opacity=".18"/>
+
+          <!-- 登山小径：一笔焦墨 -->
+          <path d="M58 442 C 130 430, 250 420, 288 368 C 320 324, 150 330, 108 282 C 70 238, 220 224, 268 176 C 306 138, 262 108, 218 92"
+                fill="none" stroke="#2f363d" stroke-width="7" stroke-linecap="round"
+                opacity=".85" filter="url(#pathRough)"/>
+
+          <!-- 已点亮节点 -->
+          <g>
+            <circle cx="58" cy="442" r="10" fill="#22262a"/>
+            <polyline points="53,442 57,446 64,438" fill="none" stroke="#f7f2e6" stroke-width="2" stroke-linecap="round"/>
+          </g>
+          <g>
+            <circle cx="176" cy="424" r="10" fill="#22262a"/>
+            <polyline points="171,424 175,428 182,420" fill="none" stroke="#f7f2e6" stroke-width="2" stroke-linecap="round"/>
+          </g>
+          <g>
+            <circle cx="288" cy="366" r="10" fill="#22262a"/>
+            <polyline points="283,366 287,370 294,362" fill="none" stroke="#f7f2e6" stroke-width="2" stroke-linecap="round"/>
+          </g>
+
+          <!-- 当前：山行 · 朱砂印 -->
+          <circle cx="180" cy="322" r="15" fill="#b03422"/>
+          <circle cx="180" cy="322" r="15" fill="none" stroke="#b03422" stroke-width="1.5" opacity=".4" stroke-dasharray="3 4"/>
+          <text x="180" y="327" text-anchor="middle" font-size="13" fill="#fdfaf2"
+                font-family="KaiTi,STKaiti,serif">行</text>
+
+          <!-- 未点亮 -->
+          <circle cx="108" cy="282" r="8" fill="#f7f2e6" stroke="#5a5f63" stroke-width="1.5" stroke-dasharray="4 3"/>
+          <circle cx="206" cy="216" r="8" fill="#f7f2e6" stroke="#5a5f63" stroke-width="1.5" stroke-dasharray="4 3"/>
+          <circle cx="268" cy="176" r="8" fill="#f7f2e6" stroke="#5a5f63" stroke-width="1.5" stroke-dasharray="4 3"/>
+          <circle cx="252" cy="120" r="8" fill="#f7f2e6" stroke="#5a5f63" stroke-width="1.5" stroke-dasharray="4 3"/>
+          <!-- 山顶 -->
+          <circle cx="218" cy="92" r="8" fill="#f7f2e6" stroke="#5a5f63" stroke-width="1.5" stroke-dasharray="4 3"/>
+          <rect x="228" y="66" width="24" height="24" fill="#b03422" opacity=".9" rx="2"/>
+          <text x="240" y="83" text-anchor="middle" font-size="13" fill="#fdfaf2"
+                font-family="KaiTi,STKaiti,serif">顶</text>
+        </svg>
+
+        <span class="node-lbl" style="left:74px; top:428px;">咏鹅</span>
+        <span class="node-lbl" style="left:192px; top:410px;">江南</span>
+        <span class="node-lbl" style="left:238px; top:352px;">静夜思</span>
+        <span class="node-lbl now" style="left:112px; top:304px;">山行 · 当前</span>
+        <span class="node-lbl dim" style="left:122px; top:264px;">枫桥夜泊</span>
+        <span class="node-lbl dim" style="left:96px; top:100px;">凌绝顶 · 第 130 首</span>
+      </div>
+
+      <div class="p3-foot">
+        <div class="p3-week">本周战报 · 背诗 <b>5</b> 首 · 称号晋升 <b>秀才</b></div>
+        <div class="p3-next">下一处：《枫桥夜泊》 —— 再背 1 首即可点亮</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="caption">诗 画 同 源 · 视 觉 方 向 —— 靳 埭 强 · 水 墨 的 现 代 性</div>
+
+</body>
+</html>
